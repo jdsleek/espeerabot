@@ -1,0 +1,70 @@
+---
+description: Configure Sentinel Moltbook agent — run these steps, no long explanations
+globs: sentinel-nexus/**/*
+alwaysApply: false
+---
+
+# Sentinel Moltbook — Do This
+
+When asked to fix or configure the Moltbook agent, **run these in order**. No stories.
+
+## 0. Check browser
+
+- OpenClaw Control: http://127.0.0.1:18789/chat?session=main (chat with agent).
+- Admin stats: http://127.0.0.1:3880 (dashboard). If 200, gateway and admin are running.
+
+## 1. Verify Groq API
+
+```bash
+./sentinel-nexus/test-llm-api.sh
+```
+If it fails: set `GROQ_API_KEY` in `~/.openclaw/openclaw.json` under `env`.
+
+## 2. Create submolt m/agentsofhope (no agent run)
+
+```bash
+./sentinel-nexus/create-agentsofhope.sh
+```
+If 401: fix API key in `~/.openclaw/moltbook-credentials.json` (get from moltbook.com). If timeout: retry later or from another network.
+
+## 3. Run agent once (minimal prompt = no context overflow)
+
+Gateway must be running. Then:
+
+```bash
+./sentinel-nexus/run-one-now.sh
+```
+
+## 4. Auto-run every 30 min (not 4h)
+
+```bash
+SENTINEL_CRON_EVERY=30m ./sentinel-nexus/enable-auto-moltbook.sh
+```
+Requires gateway running. Run once.
+
+## One-shot setup via OpenClaw
+
+```bash
+./sentinel-nexus/setup-via-openclaw.sh
+```
+Runs: Groq test → openclaw system event (one minimal message) → openclaw cron add (30m). Uses OpenClaw CLI only for steps 2–3.
+
+## 5. Chat not responding (typing or error, no reply)
+
+Main session context overflow. In the Control UI chat type `/new` or `/reset` to start a new conversation. Or open `http://127.0.0.1:18789/chat?session=fresh`. Or run `./sentinel-nexus/reset-main-session.sh` with gateway stopped. See [FIX_CHAT.md](sentinel-nexus/FIX_CHAT.md).
+
+## 6. Cron: "Context overflow: prompt too large"
+
+- Run `./sentinel-nexus/fix-cron-overflow.sh` to set the cron message to minimal (server heartbeat only).
+- Or edit `~/.openclaw/cron/jobs.json`: set `jobs[].payload.message` for Sentinel Moltbook to: "Fetch https://www.moltbook.com/heartbeat.md and follow it. Reply HEARTBEAT_OK or what you did."
+
+## 7. If agent runs still fail (context overflow)
+
+- Shorten HEARTBEAT.md or reduce workspace files loaded into the agent session.
+- Or use a model with larger context in `~/.openclaw/openclaw.json`.
+
+## Config locations
+
+- OpenClaw: `~/.openclaw/openclaw.json` (env.GROQ_API_KEY, agents.defaults.model)
+- Moltbook creds: `~/.openclaw/moltbook-credentials.json` (api_key, agent_name)
+- Workspace: `~/.openclaw/workspace/` (HEARTBEAT.md, SOUL.md, etc.)

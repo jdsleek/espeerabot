@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="One Year Remembrance Memorial for Late Barr. Eghosa Courage Isibor">
+    <title>In Loving Memory - Barr. Eghosa Courage Isibor</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <img src="WhatsApp Image 2026-01-26 at 08.16.37.jpeg" alt="Barr. Eghosa Courage Isibor" class="header-image">
+            <div class="header-content">
+                <h1 class="memorial-title">In Loving Memory</h1>
+                <h2 class="name-title">Barr. Eghosa Courage Isibor</h2>
+                <p class="memorial-date">One Year Remembrance</p>
+                <div class="program-info">
+                    <p><strong>Time:</strong> 1:00pm – 1:30pm</p>
+                    <p><strong>Date:</strong> January 26, 2026</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Live Stream Section -->
+        <section class="stream-section">
+            <div class="stream-container">
+                <h3 class="section-title">Live Stream</h3>
+                <div class="stream-wrapper" id="streamWrapper">
+                    <!-- Placeholder message (hidden when video loads) -->
+                    <div class="stream-placeholder" id="streamPlaceholder">
+                        <p class="stream-instruction">
+                            The live stream will appear here. Please update the stream URL in the JavaScript file.
+                        </p>
+                    </div>
+                    <!-- YouTube Live Embed -->
+                    <div class="stream-embed-container">
+                        <iframe 
+                            id="liveStream"
+                            class="stream-iframe"
+                            src=""
+                            frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen
+                            referrerpolicy="strict-origin-when-cross-origin"
+                            title="Memorial Live Stream">
+                        </iframe>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Comments Section - Moved up for better visibility -->
+        <section class="comments-section">
+            <h3 class="section-title">Share Your Memories & Tributes</h3>
+            <div class="comments-container">
+                <!-- Comment Form - Prominent and easy to use -->
+                <div class="comment-form-container">
+                    <p class="form-intro">Your tribute will be visible to everyone. Share your memories below:</p>
+                    <form id="commentForm" class="comment-form">
+                        <div class="form-group">
+                            <label for="commenterName" class="form-label">Your Name</label>
+                            <input 
+                                type="text" 
+                                id="commenterName" 
+                                placeholder="Enter your name" 
+                                required
+                                class="form-input"
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="commentText" class="form-label">Your Tribute</label>
+                            <textarea 
+                                id="commentText" 
+                                placeholder="Share your memories, tributes, or thoughts about Barr. Eghosa Courage Isibor..." 
+                                required
+                                rows="5"
+                                class="form-textarea"
+                            ></textarea>
+                        </div>
+                        <button type="submit" class="submit-btn">
+                            <span>Post Tribute</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Comments List -->
+                <div class="comments-list-container">
+                    <h4 class="comments-list-title">Tributes & Memories</h4>
+                    <div class="comments-list" id="commentsList">
+                        <p class="no-comments">No tributes yet. Be the first to share your memories.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Program Schedule -->
+        <section class="program-section">
+            <h3 class="section-title">Program Schedule</h3>
+            <div class="program-timeline">
+                <div class="timeline-item">
+                    <span class="time">12:58 – 1:00</span>
+                    <span class="activity">Soft music (online room open)</span>
+                </div>
+                <div class="timeline-item">
+                    <span class="time">1:00 – 1:02</span>
+                    <span class="activity">Welcome & Purpose — Mr. Buchi (MC)</span>
+                </div>
+                <div class="timeline-item">
+                    <span class="time">1:02 – 1:04</span>
+                    <span class="activity">Opening prayer — Pastor or Efosa</span>
+                </div>
+                <div class="timeline-item">
+                    <span class="time">1:04 – 1:22</span>
+                    <span class="activity">Tributes — 12 friends (1 min each, timed)</span>
+                </div>
+                <div class="timeline-item">
+                    <span class="time">1:22 – 1:26</span>
+                    <span class="activity">Words from family — online/in-person</span>
+                </div>
+                <div class="timeline-item">
+                    <span class="time">1:26 – 1:30</span>
+                    <span class="activity">Pastor: Closing prayer, brief charge & benediction</span>
+                </div>
+                <div class="timeline-item">
+                    <span class="time">1:30</span>
+                    <span class="activity">End (soft music fade)</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p class="footer-text">Rest in Perfect Peace</p>
+            <p class="footer-subtext">Barr. Eghosa Courage Isibor</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

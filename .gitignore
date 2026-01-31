@@ -1,0 +1,11 @@
+# Config with gateway token — do not commit
+sentinel-nexus/openclaw-config-paste.json
+# Env and secrets
+.env
+.env.*
+*.pem
+# OS
+.DS_Store
+# Logs and local state
+*.log
+node_modules/

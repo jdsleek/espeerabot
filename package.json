@@ -1,0 +1,14 @@
+{
+  "name": "eggy-memorial-stream",
+  "version": "1.0.0",
+  "description": "Memorial Live Stream Page for Late Barr. Eghosa Courage Isibor",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve .",
+    "start": "npx serve .",
+    "sentinel-admin": "node sentinel-nexus/admin/server.js"
+  },
+  "keywords": ["memorial", "livestream"],
+  "author": "",
+  "license": "MIT"
+}
