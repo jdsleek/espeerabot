@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Full work — Jobmaster Admin</title>
+  <style>
+    :root { --bg: #0b0f14; --card: #141b24; --text: #e6edf3; --muted: #7d8590; --accent: #58a6ff; --green: #3fb950; --border: #30363d; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1.5rem; max-width: 800px; margin-left: auto; margin-right: auto; line-height: 1.5; }
+    h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem; }
+    .sub a { color: var(--accent); text-decoration: none; }
+    .sub a:hover { text-decoration: underline; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+    .card h2 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 0.75rem; }
+    .block { white-space: pre-wrap; font-size: 0.9rem; line-height: 1.6; }
+    .stats { display: grid; gap: 0.5rem; font-size: 0.9rem; }
+    .stats .row { display: flex; gap: 1rem; }
+    .stats .label { color: var(--muted); min-width: 7rem; }
+    .empty { color: var(--muted); font-style: italic; }
+    .nav { margin-top: 1rem; font-size: 0.9rem; }
+    .nav a { color: var(--accent); margin-right: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Full work</h1>
+  <p class="sub" id="sub">Loading…</p>
+  <p id="error" class="sub" style="display:none; color:#f85149;"></p>
+
+  <div id="userCard" class="card" style="display:none;">
+    <h2>User request</h2>
+    <p id="userTitle" class="block" style="font-weight:600; margin:0 0 0.5rem;"></p>
+    <p id="userDesc" class="block muted" style="margin:0;"></p>
+  </div>
+
+  <div id="statsCard" class="card" style="display:none;">
+    <h2>Stats</h2>
+    <div class="stats" id="stats"></div>
+    <p style="margin:0.75rem 0 0; font-size:0.85rem;"><a href="#" id="bountyLink" target="_blank" rel="noopener">Open on ClawTasks</a> <span id="trackLinkWrap" style="display:none;">· <a href="#" id="trackLink">View track page (user)</a></span></p>
+  </div>
+
+  <div id="agentCard" class="card" style="display:none;">
+    <h2>Agent deliverable</h2>
+    <div id="agentDeliverable" class="block"></div>
+  </div>
+
+  <nav class="nav"><a href="/admin/completed">← Completed</a> <a href="/admin/dashboard">Dashboard</a></nav>
+
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const bountyId = params.get("bountyId") || params.get("id");
+      if (!bountyId) {
+        document.getElementById("sub").textContent = "Missing bountyId. Open from Completed: click Track on a job.";
+        return;
+      }
+      document.getElementById("sub").textContent = "Loading job " + bountyId + "…";
+      fetch("/api/bounty?bountyId=" + encodeURIComponent(bountyId))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          const b = data.bounty;
+          document.getElementById("sub").style.display = "none";
+          if (!b || data.error) {
+            document.getElementById("error").style.display = "block";
+            document.getElementById("error").textContent = data.error || "Job not found.";
+            return;
+          }
+          if (b.title) {
+            document.getElementById("userCard").style.display = "block";
+            document.getElementById("userTitle").textContent = b.title;
+            document.getElementById("userDesc").textContent = b.description || "No description.";
+          }
+          document.getElementById("statsCard").style.display = "block";
+          const completedAt = b.completed_at ? new Date(b.completed_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—";
+          document.getElementById("stats").innerHTML =
+            "<div class=\"row\"><span class=\"label\">Completed by</span><span>" + escapeHtml(b.claimer_name || "—") + "</span></div>" +
+            "<div class=\"row\"><span class=\"label\">Amount</span><span>" + escapeHtml(b.amount) + " USDC</span></div>" +
+            "<div class=\"row\"><span class=\"label\">Completed at</span><span>" + escapeHtml(completedAt) + "</span></div>" +
+            "<div class=\"row\"><span class=\"label\">Status</span><span>" + escapeHtml(b.status || "—") + "</span></div>";
+          document.getElementById("bountyLink").href = b.bounty_url || ("https://clawtasks.com/bounty/" + bountyId);
+          if (b.tracking_token) {
+            document.getElementById("trackLinkWrap").style.display = "inline";
+            document.getElementById("trackLink").href = "/job/track?token=" + encodeURIComponent(b.tracking_token);
+          }
+          document.getElementById("agentCard").style.display = "block";
+          document.getElementById("agentDeliverable").textContent = b.deliverable || "—";
+          document.getElementById("agentDeliverable").className = b.deliverable ? "block" : "block empty";
+        })
+        .catch(function(e) {
+          document.getElementById("sub").style.display = "none";
+          document.getElementById("error").style.display = "block";
+          document.getElementById("error").textContent = "Could not load: " + e.message;
+        });
+      function escapeHtml(s) {
+        if (s == null) return "";
+        const div = document.createElement("div");
+        div.textContent = s;
+        return div.innerHTML;
+      }
+    })();
+  </script>
+</body>
+</html>

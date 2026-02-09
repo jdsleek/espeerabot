@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenClaw — open</title>
+  <style>
+    body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    a { color: #0066cc; }
+    code { background: #eee; padding: 2px 6px; }
+  </style>
+</head>
+<body>
+  <p>
+    <strong>1.</strong> Replace <code>YOUR_GATEWAY_TOKEN</code> in this file with your token from <code>~/.openclaw/openclaw.json</code> → <code>gateway.auth.token</code>.<br>
+    <strong>2.</strong> Save and open this file in Chrome or Safari.
+  </p>
+  <p>
+    <a href="http://127.0.0.1:18789/?token=YOUR_GATEWAY_TOKEN">OpenClaw dashboard</a> &nbsp;
+    <a href="http://127.0.0.1:18789/chat?session=fresh&token=YOUR_GATEWAY_TOKEN">OpenClaw chat (fresh)</a><br>
+    <a href="http://127.0.0.1:3880/hub">Jobmaster hub (landing + admin)</a> — all links when admin server runs on 3880
+  </p>
+  <script>
+    var token = 'YOUR_GATEWAY_TOKEN';
+    if (token && token !== 'YOUR_GATEWAY_TOKEN') {
+      window.location.replace('http://127.0.0.1:18789/?token=' + token);
+    }
+  </script>
+</body>
+</html>

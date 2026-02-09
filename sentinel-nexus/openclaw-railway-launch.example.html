@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenClaw — Railway</title>
+  <style>
+    body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    a { color: #0066cc; }
+    code { background: #eee; padding: 2px 6px; }
+  </style>
+</head>
+<body>
+  <p>
+    <strong>1.</strong> Copy this file to <code>openclaw-railway-launch.html</code> and set <code>RAILWAY_APP_URL</code> and <code>GATEWAY_TOKEN</code> below.<br>
+    Token: Railway setup export or <code>/data/.openclaw/openclaw.json</code> → <code>gateway.auth.token</code>.<br>
+    <strong>2.</strong> Save and open the copy in Chrome or Safari.
+  </p>
+  <p>
+    <a id="link-dashboard" href="#">Open dashboard</a> &nbsp;
+    <a id="link-chat" href="#">Open chat (fresh session)</a>
+  </p>
+  <script>
+    var RAILWAY_APP_URL = 'https://espeerabot.up.railway.app';
+    var GATEWAY_TOKEN = 'YOUR_RAILWAY_GATEWAY_TOKEN';
+
+    var base = RAILWAY_APP_URL.replace(/\/$/, '') + '/openclaw';
+    var tokenParam = (GATEWAY_TOKEN && GATEWAY_TOKEN !== 'YOUR_RAILWAY_GATEWAY_TOKEN')
+      ? '?token=' + encodeURIComponent(GATEWAY_TOKEN)
+      : '';
+    document.getElementById('link-dashboard').href = base + tokenParam;
+    document.getElementById('link-chat').href = base + '/chat?session=fresh' + (tokenParam ? '&' + tokenParam.slice(1) : '');
+
+    if (GATEWAY_TOKEN && GATEWAY_TOKEN !== 'YOUR_RAILWAY_GATEWAY_TOKEN') {
+      window.location.replace(base + tokenParam);
+    }
+  </script>
+</body>
+</html>

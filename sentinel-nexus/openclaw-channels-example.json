@@ -1,0 +1,12 @@
+{
+  "channels": {
+    "discord": {
+      "enabled": true,
+      "token": "YOUR_DISCORD_BOT_TOKEN"
+    },
+    "whatsapp": {
+      "dmPolicy": "allowlist",
+      "allowFrom": ["+15551234567"]
+    }
+  }
+}

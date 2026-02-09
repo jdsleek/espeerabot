@@ -1,8 +1,18 @@
-# Config with gateway token — do not commit
+# Config with gateway token or API keys — do not commit
 sentinel-nexus/openclaw-config-paste.json
+# Railway launcher with your token (copy from .example and add token)
+sentinel-nexus/openclaw-railway-launch.html
+*credentials*.json
+*-registration.json
+*registration*.json
+moltbook-credentials.json
+**/openclaw.json
+# Do not commit any file under .openclaw that contains keys or wallets
+.openclaw/
 # Env and secrets
 .env
 .env.*
+.env.local
 *.pem
 # OS
 .DS_Store

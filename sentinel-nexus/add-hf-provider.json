@@ -1,0 +1,13 @@
+{
+  "_comment": "Merge this into ~/.openclaw/openclaw.json: 1) Add HF_TOKEN to env. 2) Add hf-inference to models.providers. 3) Set agents.defaults.model.primary to hf-inference/moonshotai/Kimi-K2.5:novita",
+  "env_HF_TOKEN": "YOUR_HF_TOKEN",
+  "models_providers_hf-inference": {
+    "baseUrl": "https://router.huggingface.co/v1",
+    "apiKey": "${HF_TOKEN}",
+    "api": "openai-completions",
+    "models": [
+      { "id": "moonshotai/Kimi-K2.5:novita", "name": "Kimi K2.5 (HF Novita)", "contextWindow": 128000 }
+    ]
+  },
+  "agents_defaults_model_primary": "hf-inference/moonshotai/Kimi-K2.5:novita"
+}

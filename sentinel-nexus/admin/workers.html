@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Workers — Jobmaster Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0e12;
+      --surface: #111820;
+      --surface2: #1a2332;
+      --text: #f0f4f8;
+      --muted: #8896a6;
+      --accent: #3b82f6;
+      --green: #22c55e;
+      --green-glow: rgba(34, 197, 94, 0.4);
+      --orange: #f59e0b;
+      --border: #1e293b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .page { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .nav { margin-bottom: 2rem; }
+    .nav a { color: var(--accent); text-decoration: none; margin-right: 1.25rem; font-weight: 600; }
+    .nav a:hover { text-decoration: underline; }
+    .hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 2rem;
+      margin-bottom: 2.5rem;
+    }
+    .hero h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 0.35rem; letter-spacing: -0.02em; }
+    .hero .sub { color: var(--muted); font-size: 0.95rem; margin: 0; }
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.75rem;
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--green);
+    }
+    .live-badge .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 10px var(--green-glow);
+      animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.2); } }
+    .structure-bar {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .structure-bar .structure-label { font-weight: 600; color: var(--text); margin-right: 0.35rem; }
+
+    .agents-visual {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      min-height: 200px;
+      position: relative;
+      overflow: hidden;
+    }
+    .agents-visual svg {
+      width: 100%;
+      height: 180px;
+      display: block;
+    }
+    .agent-node { cursor: default; }
+    .agent-node.working .node-circle { filter: drop-shadow(0 0 10px var(--green-glow)); animation: node-glow 2s ease-in-out infinite; }
+    @keyframes node-glow { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
+    .task-node .node-circle { fill: var(--surface2); stroke: var(--orange); stroke-width: 2; }
+    .flow-line { stroke: var(--border); stroke-width: 1.5; fill: none; stroke-dasharray: 6 4; animation: flow 3s linear infinite; }
+    @keyframes flow { to { stroke-dashoffset: -20; } }
+    .worker-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 1.25rem;
+      align-items: start;
+    }
+    .worker-card.working { border-left: 4px solid var(--green); box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.1); }
+    .worker-card.idle { border-left: 4px solid var(--muted); }
+    .worker-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .worker-card.working .worker-avatar { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+    .worker-main { min-width: 0; }
+    .worker-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .worker-name { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+    .worker-role { font-size: 0.7rem; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-left: 0.35rem; }
+    .worker-off-badge { font-size: 0.65rem; color: var(--muted); margin-left: 0.25rem; }
+    .worker-status {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.3rem 0.6rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+    .worker-status.working { background: rgba(34, 197, 94, 0.2); color: var(--green); }
+    .worker-status.idle { background: rgba(136, 150, 166, 0.2); color: var(--muted); }
+    .worker-status.off { background: rgba(100, 100, 100, 0.2); color: var(--muted); }
+    .worker-card.off { opacity: 0.75; border-left-color: var(--muted); }
+    .worker-stats { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.75rem; }
+    .worker-tasks h3 { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin: 0 0 0.5rem; }
+    .task {
+      padding: 0.65rem 0.85rem;
+      background: var(--bg);
+      border-radius: 10px;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      border: 1px solid var(--border);
+    }
+    .task:last-child { margin-bottom: 0; }
+    .task-title { font-weight: 600; margin-bottom: 0.2rem; color: var(--text); }
+    .task-meta { font-size: 0.8rem; color: var(--muted); }
+    .task a { color: var(--accent); text-decoration: none; font-weight: 500; }
+    .task a:hover { text-decoration: underline; }
+    .updated { color: var(--muted); font-size: 0.8rem; margin-top: 1.5rem; }
+    .error { color: #ef4444; padding: 1rem; background: rgba(239,68,68,0.1); border-radius: 10px; }
+    .empty-state { text-align: center; padding: 3rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <nav class="nav" aria-label="Admin">
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/workers">Workers</a>
+      <a href="/admin/completed">Completed</a>
+      <a href="/admin/analysis">Analysis</a>
+      <a href="/admin/report-demo">Report demo</a>
+      <a href="/" style="color:var(--muted)">Public site →</a>
+    </nav>
+    <div class="hero">
+      <div>
+        <h1>Workers</h1>
+        <p class="sub">Agents working on bounties in real time · Same flow: claim → submit → post → recruit (sequential)</p>
+      </div>
+      <span class="live-badge"><span class="dot"></span> Live</span>
+    </div>
+    <div class="structure-bar">
+      <span class="structure-label">Structure:</span> Brain (cron) runs every 5 min when the gateway is on. Lead + workers (jobmaster, jobmaster2, jobmaster3) share the same role: claim → submit → post → recruit. All enabled agents run in each cycle; jobs from our site are prioritised.
+    </div>
+
+    <div class="agents-visual" id="agentsVisual">
+      <svg viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg" id="agentsSvg"></svg>
+    </div>
+
+    <div id="workers"></div>
+    <p class="updated" id="updated"></p>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    function esc(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; }
+
+    function drawAgentsSvg(workers) {
+      const svg = document.getElementById("agentsSvg");
+      if (!svg || !workers.length) return;
+      const w = 600;
+      const h = 180;
+      const count = Math.max(workers.length, 1);
+      const spacing = count > 1 ? (w - 160) / (count - 1) : 0;
+      const startX = count > 1 ? 80 : w / 2 - 80;
+      const hasWork = workers.some((x) => x.currentWork && x.currentWork.length > 0);
+      const tx = w - 90;
+      const ty = 90;
+
+      let html = "";
+      html += `<rect width="600" height="180" fill="#111820"/><text x="300" y="22" text-anchor="middle" fill="#8896a6" font-size="10">AGENTS → TASKS</text>`;
+      html += `<defs>
+        <linearGradient id="agentGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#22c55e"/><stop offset="100%" style="stop-color:#16a34a"/></linearGradient>
+        <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>`;
+      workers.forEach((worker, i) => {
+        const x = count > 1 ? 80 + i * spacing : w / 2 - 100;
+        const y = 90;
+        const isWorking = worker.status === "working";
+        const isOff = worker.status === "off";
+        const fill = isWorking ? "url(#agentGrad)" : (isOff ? "#0d1117" : "#1a2332");
+        const stroke = isWorking ? "#22c55e" : (isOff ? "#333" : "#30363d");
+        html += `
+          <g class="agent-node ${isWorking ? "working" : ""}">
+            <circle class="node-circle" cx="${x}" cy="${y}" r="22" fill="${fill}" stroke="${stroke}" stroke-width="2" ${isWorking ? 'filter="url(#glow)"' : ""}/>
+            <text x="${x}" y="${y + 6}" text-anchor="middle" fill="${isWorking ? "#0a0e12" : (isOff ? "#4b5563" : "#8896a6")}" font-size="13" font-weight="700">${esc((worker.name.replace(/jobmaster/i, "") || worker.name.slice(0, 1)) || "J")}</text>
+          </g>
+        `;
+      });
+      html += `<g class="task-node">
+        <circle cx="${tx}" cy="${ty}" r="28" fill="#1a2332" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 3"/>
+        <text x="${tx}" y="${ty - 32}" text-anchor="middle" fill="#8896a6" font-size="9">TASKS</text>
+      </g>`;
+      workers.forEach((worker, i) => {
+        if (worker.currentWork && worker.currentWork.length) {
+          const x = count > 1 ? 80 + i * spacing : w / 2 - 100;
+          html += `<path class="flow-line" d="M ${x + 24} 90 Q ${(x + tx) / 2} 50 ${tx - 30} 90" />`;
+        }
+      });
+      svg.innerHTML = html;
+    }
+
+    function render(data) {
+      const workers = data.workers || [];
+      const container = $("workers");
+      if (data.error) {
+        container.innerHTML = "<div class='error'>" + esc(data.error) + "</div>";
+        $("updated").textContent = "";
+        $("agentsVisual").style.display = "block";
+        drawAgentsSvg([]);
+        return;
+      }
+      drawAgentsSvg(workers);
+      if (workers.length === 0) {
+        container.innerHTML = "<div class='empty-state'>No agents configured. Add agents in agency-agents.json.</div>";
+      } else {
+        container.innerHTML = workers.map((w) => {
+          const isOff = w.status === "off" || w.enabled === false;
+          const cardClass = isOff ? "worker-card off" : "worker-card " + w.status;
+          const statusLabel = isOff ? "Off" : w.status;
+          return `
+          <div class="${cardClass}">
+            <div class="worker-avatar">${esc(String((w.name.replace(/jobmaster/i, "") || w.name.slice(0, 1) || "J")).toUpperCase())}</div>
+            <div class="worker-main">
+              <div class="worker-header">
+                <span class="worker-name">${esc(w.name)} <span class="worker-role">${esc(w.role || "worker")}</span>${isOff ? " <span class='worker-off-badge'>inactive</span>" : ""}</span>
+                <span class="worker-status ${w.status}">${statusLabel}</span>
+              </div>
+              ${w.stats ? `<div class="worker-stats">Earned ${esc(w.stats.total_earned)} USDC · ${esc(w.stats.bounties_completed)} completed</div>` : isOff ? "<div class='worker-stats'>Enable in agency-agents.json to activate</div>" : ""}
+              <div class="worker-tasks">
+                <h3>Current work</h3>
+                ${w.currentWork && w.currentWork.length ? w.currentWork.map((t) => `
+                  <div class="task">
+                    <div class="task-title">${esc(t.title)}</div>
+                    <div class="task-meta">${esc(t.status)} · ${esc(t.amount)} USDC · <a href="${esc(t.link)}" target="_blank" rel="noopener">View</a></div>
+                  </div>
+                `).join("") : "<div class='task-meta'>" + (isOff ? "Not active" : "No active task") + "</div>"}
+              </div>
+            </div>
+          </div>
+        `;
+        }).join("");
+      }
+      $("updated").textContent = "Updated " + new Date().toLocaleTimeString();
+    }
+
+    function fetchWorkers() {
+      fetch("/api/workers")
+        .then((r) => r.json())
+        .then(render)
+        .catch((e) => render({ error: "Cannot load workers. Start the server: node sentinel-nexus/admin/server.js" }));
+    }
+
+    fetchWorkers();
+    setInterval(fetchWorkers, 15000);
+  </script>
+</body>
+</html>

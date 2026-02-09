@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Brain — Jobmaster Admin</title>
+  <style>
+    :root { --bg: #0b0f14; --card: #141b24; --text: #e6edf3; --muted: #7d8590; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --border: #30363d; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1rem; line-height: 1.5; }
+    h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+    .sub { color: var(--muted); font-size: 0.875rem; margin-bottom: 1rem; }
+    .sub a { color: var(--accent); text-decoration: none; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+    .card h2 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 0.75rem; }
+    .pre { white-space: pre-wrap; font-size: 0.9rem; color: var(--text); max-height: 320px; overflow-y: auto; }
+    .muted { color: var(--muted); font-size: 0.85rem; }
+    .btn { display: inline-block; padding: 0.5rem 1rem; background: var(--accent); color: var(--bg); border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: 0.5rem; margin-top: 0.5rem; }
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-green { background: var(--green); }
+    .agent-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; }
+    .agent { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; }
+    .agent .name { font-weight: 600; color: var(--accent); }
+    .agent .role { font-size: 0.75rem; color: var(--muted); }
+    .assign-form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-start; margin-top: 0.75rem; }
+    .assign-form select { padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); min-width: 140px; }
+    .assign-form input { flex: 1; min-width: 200px; padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); }
+    .assign-list { font-size: 0.85rem; margin-top: 0.5rem; }
+    .assign-item { padding: 0.4rem 0; border-bottom: 1px solid var(--border); color: var(--muted); }
+    .assign-item .agentId { color: var(--accent); font-weight: 500; }
+  </style>
+</head>
+<body>
+  <header style="margin-bottom:1rem;">
+    <h1>Brain — suggestions &amp; agents</h1>
+    <p class="sub">
+      <a href="/admin/dashboard">Dashboard</a> ·
+      <a href="/admin/workers">Workers</a> ·
+      <a href="/admin/completed">Completed</a> ·
+      <a href="/admin/analysis">Analysis</a> ·
+      <a href="/admin/brain">Brain</a> ·
+      <a href="/hub">Hub</a> ·
+      <a href="/">Public site →</a>
+    </p>
+  </header>
+
+  <div class="card">
+    <h2>Kimi 2.5 plan &amp; suggestions</h2>
+    <p class="muted">The brain uses this. Click "Plan with Kimi" to refresh.</p>
+    <button type="button" class="btn" id="planBtn">Plan with Kimi 2.5</button>
+    <div id="planStatus" class="muted" style="margin-top:0.5rem;"></div>
+    <div id="planContent" class="pre" style="margin-top:0.75rem;"></div>
+    <p id="planUpdated" class="muted" style="margin-top:0.5rem;"></p>
+  </div>
+
+  <div class="card">
+    <h2>Researcher update</h2>
+    <p class="muted">Researcher agent feeds this to the brain (airdrops, prediction markets, job boards).</p>
+    <button type="button" class="btn btn-green" id="researcherBtn">Generate researcher update</button>
+    <div id="researcherStatus" class="muted" style="margin-top:0.5rem;"></div>
+    <div id="researcherContent" class="pre" style="margin-top:0.75rem;"></div>
+  </div>
+
+  <div class="card">
+    <h2>Reach online / Discovery</h2>
+    <p class="muted">Brain constantly reaches online: find sites like ClawTasks, join/apply, get full feedback. Paste tweet or link content below for analysis. Move when we can handle it.</p>
+    <textarea id="discoveryPaste" placeholder="Paste content from a tweet, post, or link (e.g. opportunity, new platform)…" style="width:100%; min-height:60px; padding:0.5rem; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:0.9rem; margin-bottom:0.5rem;"></textarea>
+    <button type="button" class="btn" id="discoveryBtn">Run discovery (find ClawTasks-like + analyze paste)</button>
+    <div id="discoveryStatus" class="muted" style="margin-top:0.5rem;"></div>
+    <div id="discoveryFeedback" class="pre" style="margin-top:0.75rem;"></div>
+    <p id="discoveryUpdated" class="muted" style="margin-top:0.5rem;"></p>
+    <h3 style="font-size:0.85rem; margin:1rem 0 0.5rem;">Record a move (apply / joined)</h3>
+    <div class="assign-form">
+      <input type="text" id="movePlatform" placeholder="Platform name" style="min-width:120px;" />
+      <select id="moveAction">
+        <option value="apply">Apply / will join</option>
+        <option value="joined">Joined</option>
+        <option value="skip">Skip</option>
+      </select>
+      <button type="button" class="btn btn-green" id="moveBtn">Record move</button>
+    </div>
+    <div id="moveList" class="assign-list"></div>
+  </div>
+
+  <div class="card">
+    <h2>Evaluate platform (e.g. MoltX)</h2>
+    <p class="muted">Brain evaluates a platform with our agency skills: what we can do, learn, enhance, or lead. MoltX uses built-in docs; for others paste summary or link.</p>
+    <div style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; margin-bottom:0.5rem;">
+      <input type="text" id="platformName" placeholder="Platform name or URL (e.g. MoltX)" value="MoltX" style="min-width:200px; padding:0.5rem; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text);" />
+      <button type="button" class="btn" id="platformBriefBtn">Evaluate with Kimi</button>
+    </div>
+    <textarea id="platformPaste" placeholder="Optional: paste platform doc or extra context (for non-MoltX)" style="width:100%; min-height:50px; padding:0.5rem; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:0.9rem; margin-bottom:0.5rem;"></textarea>
+    <div id="platformBriefStatus" class="muted" style="margin-top:0.5rem;"></div>
+    <div id="platformBriefContent" class="pre" style="margin-top:0.75rem;"></div>
+    <p id="platformBriefUpdated" class="muted" style="margin-top:0.5rem;"></p>
+  </div>
+
+  <div class="card">
+    <h2>MoltX — one human step (then autonomous)</h2>
+    <p class="muted">When we auto-register (from discovery move), post the claim tweet on X and paste the URL below. Then we're claimed and can run engagement 24/7.</p>
+    <div id="brainMoltxStatus" class="muted" style="margin:0.5rem 0;"></div>
+    <div id="brainMoltxClaimBox" style="display:none;">
+      <pre id="brainMoltxTweetText" class="pre" style="font-size:0.8rem; max-height:120px;"></pre>
+      <input type="text" id="brainMoltxTweetUrl" placeholder="https://x.com/yourhandle/status/…" style="width:100%; padding:0.5rem; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text); margin-top:0.35rem;" />
+      <button type="button" class="btn btn-green" id="brainMoltxClaimBtn" style="margin-top:0.5rem;">Submit tweet URL to claim</button>
+      <p id="brainMoltxClaimStatus" class="muted" style="font-size:0.85rem; margin-top:0.35rem;"></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>5 agents</h2>
+    <div id="agentList" class="agent-list"></div>
+    <h3 style="font-size:0.85rem; margin:1rem 0 0.5rem;">Assign task to agent</h3>
+    <div class="assign-form">
+      <select id="assignAgent">
+        <option value="">Select agent</option>
+      </select>
+      <input type="text" id="assignTask" placeholder="Task (e.g. Check Polymarket for small-stake markets)" />
+      <button type="button" class="btn" id="assignBtn">Assign</button>
+    </div>
+    <div id="assignStatus" class="muted" style="margin-top:0.5rem;"></div>
+    <div id="assignList" class="assign-list"></div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    function esc(s) {
+      const d = document.createElement("div");
+      d.textContent = s == null ? "" : s;
+      return d.innerHTML;
+    }
+
+    function loadSuggestions() {
+      fetch("/api/brain-suggestions")
+        .then((r) => r.json())
+        .then((d) => {
+          $("planContent").textContent = d.plan || d.suggestions || "(No plan yet. Click \"Plan with Kimi 2.5\".)";
+          $("planUpdated").textContent = d.lastUpdated ? "Updated: " + new Date(d.lastUpdated).toLocaleString() : "";
+          renderAssignments(d.assignments || []);
+        })
+        .catch(() => { $("planContent").textContent = "(Failed to load.)"; });
+    }
+
+    function loadResearcher() {
+      fetch("/api/researcher-update")
+        .then((r) => r.json())
+        .then((d) => {
+          $("researcherContent").textContent = d.update || "(No update yet. Click \"Generate researcher update\".)";
+        })
+        .catch(() => { $("researcherContent").textContent = "(Failed to load.)"; });
+    }
+
+    function loadRoster() {
+      fetch("/api/agent-roster")
+        .then((r) => r.json())
+        .then((d) => {
+          const agents = d.agents || [];
+          const list = $("agentList");
+          list.innerHTML = agents.map((a) =>
+            "<div class=\"agent\"><span class=\"name\">" + esc(a.name || a.id) + "</span><div class=\"role\">" + esc(a.role || "") + "</div></div>"
+          ).join("");
+          const sel = $("assignAgent");
+          sel.innerHTML = "<option value=\"\">Select agent</option>" + agents.map((a) =>
+            "<option value=\"" + esc(a.id) + "\">" + esc(a.name || a.id) + " (" + esc(a.role) + ")</option>"
+          ).join("");
+        })
+        .catch(() => {});
+    }
+
+    function renderAssignments(arr) {
+      const el = $("assignList");
+      if (!arr.length) { el.innerHTML = "<span class=\"muted\">No assignments yet.</span>"; return; }
+      el.innerHTML = arr.slice(-20).reverse().map((a) =>
+        "<div class=\"assign-item\"><span class=\"agentId\">" + esc(a.agentId) + "</span> " + esc(a.task) + " <span class=\"muted\">" + (a.at ? new Date(a.at).toLocaleString() : "") + "</span></div>"
+      ).join("");
+    }
+
+    $("planBtn").onclick = function () {
+      this.disabled = true;
+      $("planStatus").textContent = "Asking Kimi 2.5…";
+      fetch("/api/brain-suggestions", { method: "POST" })
+        .then((r) => r.json())
+        .then((d) => {
+          $("planStatus").textContent = d.ok ? "Done." : (d.error || "Failed.");
+          loadSuggestions();
+        })
+        .catch(() => { $("planStatus").textContent = "Request failed."; })
+        .finally(() => { this.disabled = false; });
+    };
+
+    $("researcherBtn").onclick = function () {
+      this.disabled = true;
+      $("researcherStatus").textContent = "Generating…";
+      fetch("/api/researcher-update", { method: "POST" })
+        .then((r) => r.json())
+        .then((d) => {
+          $("researcherStatus").textContent = d.ok ? "Done." : (d.error || "Failed.");
+          if (d.update) $("researcherContent").textContent = d.update;
+        })
+        .catch(() => { $("researcherStatus").textContent = "Request failed."; })
+        .finally(() => { this.disabled = false; });
+    };
+
+    $("assignBtn").onclick = function () {
+      const agentId = $("assignAgent").value;
+      const task = $("assignTask").value.trim();
+      if (!agentId || !task) { $("assignStatus").textContent = "Select an agent and enter a task."; return; }
+      $("assignStatus").textContent = "Saving…";
+      fetch("/api/assign-to-agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId, task }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          $("assignStatus").textContent = d.ok ? "Assigned." : (d.error || "Failed.");
+          if (d.ok) { $("assignTask").value = ""; loadSuggestions(); }
+        })
+        .catch(() => { $("assignStatus").textContent = "Request failed."; });
+    };
+
+    function loadDiscovery() {
+      fetch("/api/discovery-feed")
+        .then((r) => r.json())
+        .then((d) => {
+          $("discoveryFeedback").textContent = d.feedback || "(No discovery run yet. Click \"Run discovery\" and optionally paste tweet/link content.)";
+          $("discoveryUpdated").textContent = d.lastUpdated ? "Updated: " + new Date(d.lastUpdated).toLocaleString() : "";
+          const moves = d.moves || [];
+          $("moveList").innerHTML = moves.length
+            ? moves.slice(-15).reverse().map((m) => "<div class=\"assign-item\"><span class=\"agentId\">" + esc(m.platform) + "</span> → " + esc(m.action) + " <span class=\"muted\">" + (m.at ? new Date(m.at).toLocaleString() : "") + "</span></div>").join("")
+            : "<span class=\"muted\">No moves recorded yet.</span>";
+        })
+        .catch(() => { $("discoveryFeedback").textContent = "(Failed to load.)"; });
+    }
+
+    function loadPlatformBriefs() {
+      fetch("/api/platform-brief")
+        .then((r) => r.json())
+        .then((d) => {
+          const briefs = d.briefs || [];
+          const latest = briefs[0];
+          $("platformBriefContent").textContent = latest ? latest.brief : "(No platform brief yet. Use \"Evaluate with Kimi\" for MoltX or paste doc for another platform.)";
+          $("platformBriefUpdated").textContent = latest && latest.at ? "Last: " + latest.platform + " — " + new Date(latest.at).toLocaleString() : "";
+        })
+        .catch(() => { $("platformBriefContent").textContent = "(Failed to load.)"; });
+    }
+
+    $("platformBriefBtn").onclick = function () {
+      this.disabled = true;
+      $("platformBriefStatus").textContent = "Evaluating with Kimi…";
+      const platform = $("platformName").value.trim() || "MoltX";
+      const docSummary = $("platformPaste").value.trim();
+      fetch("/api/platform-brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform, docSummary }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          $("platformBriefStatus").textContent = d.ok ? (d.autoMoveRecorded ? "Done. Move recorded automatically." : "Done.") : (d.error || "Failed.");
+          if (d.brief) $("platformBriefContent").textContent = d.brief;
+          loadPlatformBriefs();
+          if (d.ok && d.autoMoveRecorded) loadDiscovery();
+        })
+        .catch(() => { $("platformBriefStatus").textContent = "Request failed."; })
+        .finally(() => { this.disabled = false; });
+    };
+
+    $("discoveryBtn").onclick = function () {
+      this.disabled = true;
+      $("discoveryStatus").textContent = "Reaching online (Kimi 2.5)…";
+      const paste = $("discoveryPaste").value.trim();
+      fetch("/api/discovery-feed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paste }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          $("discoveryStatus").textContent = d.ok ? "Done." : (d.error || "Failed.");
+          if (d.feedback) $("discoveryFeedback").textContent = d.feedback;
+          loadDiscovery();
+        })
+        .catch(() => { $("discoveryStatus").textContent = "Request failed."; })
+        .finally(() => { this.disabled = false; });
+    };
+
+    $("moveBtn").onclick = function () {
+      const platform = $("movePlatform").value.trim();
+      const action = $("moveAction").value;
+      if (!platform) { $("moveList").innerHTML = "<span class=\"muted\">Enter a platform name.</span>"; return; }
+      fetch("/api/discovery-move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform, action }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.ok) { $("movePlatform").value = ""; loadDiscovery(); }
+        });
+    };
+
+    function loadBrainMoltx() {
+      fetch("/api/moltx/status")
+        .then((r) => r.json())
+        .then((d) => {
+          const statusEl = $("brainMoltxStatus");
+          const boxEl = $("brainMoltxClaimBox");
+          const tweetEl = $("brainMoltxTweetText");
+          const urlEl = $("brainMoltxTweetUrl");
+          const claimBtn = $("brainMoltxClaimBtn");
+          const claimStatusEl = $("brainMoltxClaimStatus");
+          if (!statusEl) return;
+          if (d.claimed) {
+            statusEl.textContent = "Claimed · " + (d.agent_name || "MoltX") + ". We can run engagement 24/7.";
+            boxEl.style.display = "none";
+            return;
+          }
+          if (d.registered && d.claim_tweet_text) {
+            statusEl.textContent = "Registered. Post the tweet below on X, then paste the tweet URL and click Submit.";
+            boxEl.style.display = "block";
+            tweetEl.textContent = d.claim_tweet_text;
+            claimBtn.onclick = function () {
+              const url = (urlEl && urlEl.value) ? urlEl.value.trim() : "";
+              if (!url) { claimStatusEl.textContent = "Paste the tweet URL first."; return; }
+              claimBtn.disabled = true;
+              claimStatusEl.textContent = "Submitting…";
+              fetch("/api/moltx/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tweet_url: url }) })
+                .then((r) => r.json())
+                .then((res) => {
+                  claimStatusEl.textContent = res.ok ? "Claimed." : (res.error || "Failed.");
+                  if (res.ok) loadBrainMoltx();
+                })
+                .catch(() => { claimStatusEl.textContent = "Request failed."; })
+                .finally(() => { claimBtn.disabled = false; });
+            };
+            return;
+          }
+          statusEl.textContent = "Not registered yet. Evaluate MoltX above and record move; we auto-register within ~15 min.";
+          boxEl.style.display = "none";
+        })
+        .catch(() => { if ($("brainMoltxStatus")) $("brainMoltxStatus").textContent = "Could not load MoltX status."; });
+    }
+
+    loadSuggestions();
+    loadResearcher();
+    loadRoster();
+    loadDiscovery();
+    loadPlatformBriefs();
+    loadBrainMoltx();
+  </script>
+</body>
+</html>

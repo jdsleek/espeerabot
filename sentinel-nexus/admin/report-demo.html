@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Report demo — Jobmaster Admin</title>
+  <style>
+    :root { --bg: #0b0f14; --card: #141b24; --text: #e6edf3; --muted: #7d8590; --accent: #58a6ff; --green: #3fb950; --border: #30363d; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1rem; max-width: 820px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+    h1 { font-size: 1.4rem; margin: 0 0 0.5rem; }
+    .sub { color: var(--muted); font-size: 0.875rem; margin-bottom: 1.5rem; }
+    .sub a { color: var(--accent); text-decoration: none; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
+    .card h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 0.75rem; }
+    .report { white-space: pre-wrap; font-size: 0.95rem; line-height: 1.65; }
+    .report h3 { font-size: 1rem; margin: 1.25rem 0 0.5rem; color: var(--accent); }
+    .report h3:first-child { margin-top: 0; }
+    .muted { color: var(--muted); }
+    .btn { display: inline-block; padding: 0.5rem 1rem; background: var(--accent); color: var(--bg); border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 0.5rem; }
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #kimiResult { margin-top: 1rem; padding: 1rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; white-space: pre-wrap; font-size: 0.9rem; min-height: 80px; }
+    #kimiResult.empty { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>Report quality: Sachet water sales in Lagos</h1>
+  <nav class="sub">
+    <a href="/admin/dashboard">Dashboard</a> ·
+    <a href="/admin/workers">Workers</a> ·
+    <a href="/admin/completed">Completed</a> ·
+    <a href="/admin/analysis">Analysis</a> ·
+    <a href="/admin/report-demo">Report demo</a> ·
+    <a href="/">Public site →</a>
+  </nav>
+
+  <div class="card">
+    <h2>Would I be happy with the current submission?</h2>
+    <p><strong>Short answer: It’s okay, but not “I’m happy” level.</strong></p>
+    <p>What we submitted is a correct structure (Executive summary, Findings, Recommendations) and hits the topic, but it’s generic and short. As the poster I’d want:</p>
+    <ul>
+      <li><strong>Lagos-specific context</strong> — names of areas, channels, or norms (e.g. Oshodi, Agege, traffic, “pure water” culture), not just “high-traffic areas”.</li>
+      <li><strong>More substance</strong> — 1–2 paragraphs per section, not one line each. Realistic numbers or examples (e.g. pack size, price range, margin) where possible.</li>
+      <li><strong>Actionable recommendations</strong> — concrete next steps (e.g. “Partner with 3–5 kiosks in Oshodi for a pilot”), not only “invest in branding”.</li>
+    </ul>
+    <p>So: the kind of result that would make me happy is below (ideal example) and the Kimi 2.5 version you can generate.</p>
+  </div>
+
+  <div class="card">
+    <h2>Ideal report (what would make a poster happy)</h2>
+    <p class="muted" style="font-size:0.85rem;">Example of the depth and specificity we aim for. This is the bar.</p>
+    <div class="report" id="idealReport"></div>
+  </div>
+
+  <div class="card">
+    <h2>Kimi 2.5 version</h2>
+    <p class="muted" style="font-size:0.85rem;">Generate a fresh report using your Kimi 2.5 model (gateway must be running).</p>
+    <button type="button" class="btn" id="genBtn">Generate report with Kimi 2.5</button>
+    <button type="button" class="btn" id="loadBtn" style="margin-left:0.5rem; background:var(--border);">Load last generated</button>
+    <div id="kimiResult" class="empty">Click “Generate” to run Kimi 2.5 (gateway must be running), or “Load last generated” if you already ran <code>./sentinel-nexus/generate-kimi-report.sh</code> from the terminal.</div>
+  </div>
+
+  <script>
+    const idealReport = `## Executive summary
+
+Sachet water (“pure water”) in Lagos is a high-volume, low-margin business dominated by informal retail: kiosks, mobile vendors, and small shops. Success depends on placement in high-traffic locations (bus stops, markets, schools), visible branding and NAFDAC registration, and simple pricing (e.g. per sachet or per pack). Margins are thin; volume and trust drive repeat sales. This note summarises practical best practices for distribution and retail in Lagos and environs.
+
+## Key findings
+
+1. **Location** — Sales concentrate at transport nodes (Oshodi, Yaba, Berger), markets (Mushin, Mile 12), and near schools. Vendors who secure fixed spots see more repeat customers than purely mobile sellers.
+
+2. **Trust and compliance** — NAFDAC registration and a visible seal matter. In Lagos, buyers often check for the seal; unregistered or unbranded sachets sell only where price is the sole driver.
+
+3. **Pricing and pack size** — Common units are per sachet (e.g. ₦10–20) and per pack (e.g. 20 sachets). Retailers prefer a clear margin (e.g. ₦2–5 per sachet); bulk pricing to kiosks improves offtake.
+
+4. **Channels** — Kiosks and small shops are the main offtake; mobile vendors serve traffic and events. Building a small network of 5–10 kiosks in one area often works better than spreading too thin.
+
+5. **Hygiene and packaging** — Clean handling and intact packaging reduce breakage and complaints. In hot periods, storage and rotation matter to avoid leaks and rejections.
+
+## Recommendations
+
+1. **Pilot in one area** — Choose one locality (e.g. Oshodi or Agege), sign 3–5 kiosks or shops with a simple margin and supply terms, and measure volume and feedback for 4–6 weeks.
+
+2. **Brand and seal** — Ensure NAFDAC registration and clear branding on every pack; train retailers to display and mention the seal.
+
+3. **Simple pricing** — Publish a clear price per sachet and per pack for retailers; consider a small discount for weekly or bulk offtake to lock in volume.
+
+4. **Retailer support** — Provide a few branded umbrellas or racks to pilot kiosks to improve visibility and position.
+
+5. **Feedback loop** — Visit pilot retailers weekly to collect sales and complaints; use this to adjust price, pack size, or placement before scaling.`;
+
+    document.getElementById("idealReport").textContent = idealReport;
+
+    document.getElementById("loadBtn").addEventListener("click", function() {
+      const out = document.getElementById("kimiResult");
+      out.textContent = "Loading…";
+      out.classList.remove("empty");
+      fetch("/api/generate-kimi-report")
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.report) {
+            out.textContent = d.report;
+          } else {
+            out.textContent = "No report file found. Run Generate with the gateway on, or run from terminal: ./sentinel-nexus/generate-kimi-report.sh";
+            out.classList.add("empty");
+          }
+        })
+        .catch(function(e) {
+          out.textContent = "Error: " + e.message;
+        });
+    });
+
+    document.getElementById("genBtn").addEventListener("click", function() {
+      const btn = this;
+      const out = document.getElementById("kimiResult");
+      btn.disabled = true;
+      out.textContent = "Generating… (this may take 30–90 seconds).";
+      out.classList.remove("empty");
+      fetch("/api/generate-kimi-report", { method: "POST" })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          btn.disabled = false;
+          if (d.error) {
+            out.textContent = "Error: " + d.error + (d.hint ? "\n\n" + d.hint : "");
+            return;
+          }
+          out.textContent = d.report || d.text || "No content returned.";
+        })
+        .catch(function(e) {
+          btn.disabled = false;
+          out.textContent = "Request failed: " + e.message;
+        });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Track your job — Jobmaster Agency</title>
+  <style>
+    :root { --bg: #0b0f14; --card: #141b24; --text: #e6edf3; --muted: #7d8590; --accent: #58a6ff; --green: #3fb950; --border: #30363d; --orange: #d29922; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1.5rem; max-width: 640px; margin-left: auto; margin-right: auto; }
+    h1 { font-size: 1.35rem; margin: 0 0 0.5rem; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+    .card h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 0.75rem; }
+    .status { display: inline-block; padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; }
+    .status.posted { background: rgba(125, 133, 144, 0.2); color: var(--muted); }
+    .status.in_progress { background: rgba(88, 166, 255, 0.2); color: var(--accent); }
+    .status.delivered { background: rgba(63, 185, 80, 0.2); color: var(--green); }
+    .status.invalid { background: rgba(248, 81, 73, 0.15); color: #f85149; }
+    .timeline { margin: 1rem 0; padding-left: 1rem; border-left: 2px solid var(--border); }
+    .timeline .step { margin-bottom: 0.75rem; font-size: 0.9rem; }
+    .timeline .step.done { color: var(--green); }
+    .timeline .step.current { color: var(--accent); font-weight: 600; }
+    .timeline .step.pending { color: var(--muted); }
+    .timeline .step .when { font-size: 0.8rem; color: var(--muted); margin-left: 0.25rem; }
+    .deliverable { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-top: 0.75rem; font-size: 0.9rem; line-height: 1.5; max-height: 60vh; overflow: auto; }
+    .wow { background: linear-gradient(135deg, rgba(63, 185, 80, 0.12), rgba(88, 166, 255, 0.08)); border: 1px solid rgba(63, 185, 80, 0.3); border-radius: 12px; padding: 1rem; margin-top: 1rem; font-size: 0.95rem; }
+    .duration { color: var(--green); font-weight: 600; }
+    a { color: var(--accent); }
+    .empty { color: var(--muted); font-style: italic; }
+    .paste-box { margin-top: 1rem; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
+    .paste-box input { width: 100%; padding: 0.6rem; margin: 0.5rem 0; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.9rem; }
+    .paste-box button { padding: 0.5rem 1rem; background: var(--accent); color: var(--bg); border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    .paste-box button:hover { opacity: 0.9; }
+    .hint { font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem; }
+    .agents-hint { margin-top: 1rem; padding: 0.75rem; background: rgba(210, 153, 34, 0.1); border: 1px solid rgba(210, 153, 34, 0.3); border-radius: 8px; font-size: 0.85rem; color: var(--muted); }
+    .user-header { border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+    .user-header .brand { font-weight: 700; font-size: 1.1rem; text-decoration: none; color: var(--text); }
+    .user-header .brand:hover { color: var(--accent); }
+    .user-header .nav { font-size: 0.9rem; margin-top: 0.5rem; }
+    .user-header .nav a { color: var(--muted); text-decoration: none; margin-right: 1rem; }
+    .user-header .nav a:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header class="user-header">
+    <a href="/" class="brand">Jobmaster Agency</a>
+    <nav class="nav" aria-label="Main"><a href="/">Home</a> <a href="/post-job">Post a job</a> <a href="/job/track">Track your job</a></nav>
+  </header>
+  <h1>Track your job</h1>
+  <p class="sub">See status and result for a job you posted. Use the link you received when you posted, or paste it below.</p>
+
+  <div class="card" id="pasteCard">
+    <h2>Paste your tracking link</h2>
+    <p class="muted" style="font-size:0.85rem; margin:0 0 0.5rem;">If you lost the link, paste the full tracking URL or the token here.</p>
+    <div class="paste-box">
+      <input type="text" id="pasteInput" placeholder="e.g. http://127.0.0.1:3880/job/track?token=... or paste just the token" />
+      <br>
+      <button type="button" id="pasteBtn">Open job status</button>
+    </div>
+    <p class="hint">The link was in the green message after you clicked “Post job”. Save it next time to track and see the result.</p>
+  </div>
+
+  <div class="card" id="card">
+    <h2>Job status</h2>
+    <p id="monitorUrlLine" class="muted" style="font-size:0.8rem; word-break:break-all; display:none;">Monitor: <a id="monitorUrl" href="#">...</a></p>
+    <p id="message" class="empty">Loading…</p>
+    <p id="statusLine" style="display:none;"><span class="muted">Status</span> <span id="statusBadge" class="status"></span></p>
+    <p id="titleLine" style="display:none;"><span class="muted">Job</span> <span id="jobTitle"></span></p>
+    <div id="timelineBox" class="timeline" style="display:none;"></div>
+    <p id="timeLine" style="display:none; font-size:0.9rem; color:var(--muted);"></p>
+    <p id="resultLink" style="display:none;">View on ClawTasks: <a id="bountyLink" href="#" target="_blank" rel="noopener">Open bounty</a> <span class="muted" style="font-size:0.8rem;" id="bountyUrlText"></span></p>
+    <p id="fullReportLink" style="display:none; margin-top:0.75rem;"><a href="#" id="fullReportLinkA" style="font-weight:600;">View full report →</a></p>
+    <div id="workPreviewBox" class="card" style="display:none; margin-top:0.5rem;">
+      <h2>Work in progress (preview)</h2>
+      <p class="muted" style="font-size:0.85rem; margin:0 0 0.5rem;">Latest submission from our agent — not yet approved. Full result will appear below once delivered.</p>
+      <div id="workPreviewContent" class="deliverable" style="max-height:40vh;"></div>
+    </div>
+    <div id="nudgeRunCycle" style="display:none; margin-top:1rem;">
+      <p class="muted" style="font-size:0.85rem; margin-bottom:0.5rem;">Job claimed but not yet submitted? Run one cycle to submit and approve (claim → submit human-front → auto-approve).</p>
+      <button type="button" id="runCycleBtn" style="padding:0.5rem 1rem; background:var(--accent); color:var(--bg); border:none; border-radius:8px; font-weight:600; cursor:pointer;">Run cycle now</button>
+      <span id="runCycleStatus" class="muted" style="font-size:0.85rem; margin-left:0.5rem;"></span>
+    </div>
+    <div id="deliverableBox" class="deliverable" style="display:none;"></div>
+    <div id="wowBox" class="wow" style="display:none;"></div>
+    <div id="agentsHint" class="agents-hint" style="display:none;">If your job is stuck on “Posted” or “In progress”, the brain may not be running. Start the gateway for automatic runs: <code>./sentinel-nexus/run-agency-24-7.sh</code> — or use <strong>Run cycle now</strong> above to submit and approve work. The brain reviews before submit (scope, report format, substance); learnings are written to <code>agency-learnings.md</code> after each run.</div>
+  </div>
+
+  <p class="sub"><a href="/">Home</a> · <a href="/post-job">Post a job</a> · <a href="/job/track">Track your job</a></p>
+
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+      const message = document.getElementById("message");
+      const statusLine = document.getElementById("statusLine");
+      const statusBadge = document.getElementById("statusBadge");
+      const titleLine = document.getElementById("titleLine");
+      const jobTitle = document.getElementById("jobTitle");
+      const timelineBox = document.getElementById("timelineBox");
+      const timeLine = document.getElementById("timeLine");
+      const resultLink = document.getElementById("resultLink");
+      const bountyLink = document.getElementById("bountyLink");
+      const monitorUrlLine = document.getElementById("monitorUrlLine");
+      const monitorUrl = document.getElementById("monitorUrl");
+      const deliverableBox = document.getElementById("deliverableBox");
+      const wowBox = document.getElementById("wowBox");
+
+      function esc(s) {
+        if (s == null || s === undefined) return "";
+        const div = document.createElement("div");
+        div.textContent = s;
+        return div.innerHTML;
+      }
+      function formatWhen(iso) {
+        if (!iso) return "";
+        try {
+          const d = new Date(iso);
+          return d.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
+        } catch { return iso; }
+      }
+
+      if (!token) {
+        document.getElementById("card").style.display = "none";
+        document.getElementById("pasteCard").style.display = "block";
+        document.getElementById("pasteBtn").onclick = function() {
+          var raw = (document.getElementById("pasteInput").value || "").trim();
+          if (!raw) return;
+          var t = null;
+          try {
+            if (raw.indexOf("token=") !== -1) {
+              var u = new URL(raw);
+              t = u.searchParams.get("token");
+            } else if (raw.indexOf("/") === -1) t = raw;
+            else { var u = new URL(raw); t = u.searchParams.get("token"); }
+          } catch (e) { t = raw; }
+          if (t) window.location.href = "/job/track?token=" + encodeURIComponent(t);
+        };
+        return;
+      }
+      document.getElementById("pasteCard").style.display = "none";
+
+      fetch("/api/job/track?token=" + encodeURIComponent(token))
+        .then((r) => r.json())
+        .then((d) => {
+          message.style.display = "none";
+          var fullTrackUrl = window.location.origin + "/job/track?token=" + encodeURIComponent(token);
+          if (monitorUrlLine) { monitorUrlLine.style.display = "block"; }
+          if (monitorUrl) { monitorUrl.href = fullTrackUrl; monitorUrl.textContent = fullTrackUrl; }
+          if (d.error && d.status === "invalid") {
+            message.style.display = "block";
+            message.textContent = d.error || "Job not found.";
+            message.classList.remove("empty");
+            return;
+          }
+          titleLine.style.display = "block";
+          jobTitle.textContent = d.title || "—";
+          statusLine.style.display = "block";
+          const statusLabels = { posted: "Posted", in_progress: "In progress", delivered: "Delivered", error: "Error" };
+          statusBadge.textContent = statusLabels[d.status] || d.status || "—";
+          statusBadge.className = "status " + (d.status || "posted");
+
+          var steps = [
+            { key: "posted", label: "Posted", when: d.createdAt, done: true },
+            { key: "claimed", label: "Claimed by our agency", when: null, done: d.status !== "posted" },
+            { key: "progress", label: "Working on it", when: null, done: d.status === "in_progress" || d.status === "delivered" },
+            { key: "submitted", label: "Submitted for your review", when: null, done: d.status === "delivered" },
+            { key: "delivered", label: "Delivered", when: d.deliveredAt, done: d.status === "delivered" },
+          ];
+          timelineBox.style.display = "block";
+          timelineBox.innerHTML = steps.map(function(s) {
+            var cls = s.done ? "done" : (d.status === "in_progress" && s.key === "progress") ? "current" : "pending";
+            var when = s.when ? " <span class=\"when\">" + esc(formatWhen(s.when)) + "</span>" : "";
+            return "<div class=\"step " + cls + "\">" + (s.done ? "✓ " : "○ ") + esc(s.label) + when + "</div>";
+          }).join("");
+
+          if (d.deliveredAt) {
+            timeLine.style.display = "block";
+            if (d.durationMinutes != null) {
+              timeLine.innerHTML = "Delivered at " + esc(formatWhen(d.deliveredAt)) + " · <span class=\"duration\">Completed in " + d.durationMinutes + " min</span>";
+            } else {
+              timeLine.innerHTML = "Delivered at " + esc(formatWhen(d.deliveredAt));
+            }
+          } else if (d.status === "in_progress") {
+            timeLine.style.display = "block";
+            timeLine.textContent = "We're on it. Usually 5–15 min from claim to delivery.";
+          }
+
+          if (d.bountyUrl) {
+            resultLink.style.display = "block";
+            bountyLink.href = d.bountyUrl;
+            var bountyUrlText = document.getElementById("bountyUrlText");
+            if (bountyUrlText) bountyUrlText.textContent = "(" + d.bountyUrl + ")";
+          }
+          if (d.workPreview) {
+            var wpBox = document.getElementById("workPreviewBox");
+            var wpContent = document.getElementById("workPreviewContent");
+            if (wpBox && wpContent) { wpBox.style.display = "block"; wpContent.textContent = d.workPreview; }
+          }
+          if (d.deliverable) {
+            deliverableBox.style.display = "block";
+            deliverableBox.textContent = d.deliverable;
+          }
+          if (d.status === "delivered" && d.deliverable) {
+            var fr = document.getElementById("fullReportLink");
+            var fra = document.getElementById("fullReportLinkA");
+            if (fr && fra) { fr.style.display = "block"; fra.href = "/job/report?token=" + encodeURIComponent(token); }
+          }
+          if (!d.deliverable && d.status === "delivered") {
+            deliverableBox.style.display = "block";
+            deliverableBox.innerHTML = "<span class='empty'>Result is available on ClawTasks. Use the link above to view it.</span>";
+          }
+          if (d.status === "delivered") {
+            wowBox.style.display = "block";
+            wowBox.innerHTML = "Your result is ready. Thanks for using Jobmaster Agency.";
+          }
+          if (d.status === "in_progress") {
+            var nudge = document.getElementById("nudgeRunCycle");
+            if (nudge) nudge.style.display = "block";
+          }
+          if (d.status !== "delivered" && d.status !== "invalid") {
+            var ah = document.getElementById("agentsHint");
+            if (ah) ah.style.display = "block";
+          }
+          var runCycleBtn = document.getElementById("runCycleBtn");
+          var runCycleStatus = document.getElementById("runCycleStatus");
+          if (runCycleBtn && runCycleStatus) {
+            runCycleBtn.onclick = function() {
+              runCycleBtn.disabled = true;
+              runCycleStatus.textContent = "Running…";
+              fetch("/api/run-cycle", { method: "POST" })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                  runCycleStatus.textContent = data.message || data.ok ? "Done. Refreshing…" : (data.error || "Error");
+                  runCycleBtn.disabled = false;
+                  if (data.ok || data.message) setTimeout(function() { window.location.reload(); }, 2000);
+                })
+                .catch(function(e) {
+                  runCycleStatus.textContent = "Error: " + e.message;
+                  runCycleBtn.disabled = false;
+                });
+            };
+          }
+        })
+        .catch((e) => {
+          message.textContent = "Could not load job: " + e.message;
+          message.classList.remove("empty");
+        });
+    })();
+  </script>
+</body>
+</html>

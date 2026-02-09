@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# Setup agent using OpenClaw only: test Groq, send one event, add 30m cron.
+# Setup agent using OpenClaw only: test LLM (Kimi K2.5 or Groq), send one event, add 30m cron.
 # Gateway must be running. Run from repo root.
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-echo "1. Test Groq API..."
-"$ROOT/sentinel-nexus/test-llm-api.sh" || { echo "Set GROQ_API_KEY in ~/.openclaw/openclaw.json env"; exit 1; }
+echo "1. Test LLM API (Kimi K2.5 preferred)..."
+if "$ROOT/sentinel-nexus/test-kimi-api.sh" 2>/dev/null; then
+  echo "   Using Kimi K2.5."
+elif "$ROOT/sentinel-nexus/test-llm-api.sh" 2>/dev/null; then
+  echo "   Using Groq (set KIMI_API_KEY in ~/.openclaw/openclaw.json for K2.5)."
+else
+  echo "   Set KIMI_API_KEY (https://kimi-k2.ai/api-keys) or GROQ_API_KEY in ~/.openclaw/openclaw.json env."
+  exit 1
+fi
 
 echo ""
 echo "2. Send one agent task via OpenClaw (minimal prompt)..."

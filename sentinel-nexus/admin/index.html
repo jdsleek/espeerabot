@@ -3,34 +3,79 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sentinel_Nexus — Admin</title>
+  <title>Dashboard — Jobmaster Admin</title>
   <style>
-    :root { --bg: #0f1419; --card: #1a2332; --text: #e7e9ea; --muted: #8b98a5; --accent: #1d9bf0; --green: #00ba7c; --border: #2f3336; }
+    :root { --bg: #0b0f14; --card: #141b24; --text: #e6edf3; --muted: #7d8590; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --border: #30363d; }
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1rem; min-height: 100vh; }
-    h1 { font-size: 1.5rem; margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+    h1 { font-size: 1.5rem; margin: 0 0 0.25rem; display: flex; align-items: center; gap: 0.5rem; }
     h1 a { color: var(--accent); text-decoration: none; }
     .sub { color: var(--muted); font-size: 0.875rem; margin-bottom: 1rem; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; }
-    .card h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 0.5rem; }
-    .card .value { font-size: 1.5rem; font-weight: 700; }
-    .card .row { display: flex; justify-content: space-between; margin: 0.25rem 0; font-size: 0.9rem; }
-    .card .row .muted { color: var(--muted); }
-    .learnings { white-space: pre-wrap; font-size: 0.85rem; max-height: 200px; overflow-y: auto; color: var(--muted); }
-    .learnings.empty { font-style: italic; }
-    .state-json { font-size: 0.75rem; font-family: ui-monospace, monospace; white-space: pre-wrap; word-break: break-all; max-height: 180px; overflow-y: auto; color: var(--muted); }
     .live { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 0.5rem; animation: pulse 2s infinite; }
     @keyframes pulse { 50% { opacity: 0.6; } }
-    .error { color: #f4212e; font-size: 0.85rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; }
+    .card h2 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 0.75rem; }
+    .card .value { font-size: 1.5rem; font-weight: 700; }
+    .card .row { display: flex; justify-content: space-between; margin: 0.35rem 0; font-size: 0.9rem; }
+    .card .row .muted { color: var(--muted); }
+    .full { grid-column: 1 / -1; }
+    .agent-block { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.75rem; }
+    .agent { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; }
+    .agent .name { font-weight: 600; color: var(--accent); }
+    .agent .stat { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; }
+    .activity-list { font-size: 0.85rem; max-height: 220px; overflow-y: auto; }
+    .activity-item { padding: 0.5rem 0; border-bottom: 1px solid var(--border); color: var(--muted); }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-item .type { color: var(--accent); font-weight: 500; }
+    .cron-job { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; font-size: 0.9rem; border-bottom: 1px solid var(--border); }
+    .cron-job:last-child { border-bottom: none; }
+    .status-ok { color: var(--green); }
+    .status-error { color: var(--red); }
     .updated { color: var(--muted); font-size: 0.75rem; margin-top: 1rem; }
+    .error { color: var(--red); font-size: 0.85rem; }
+    .link-list { font-size: 0.85rem; margin-top: 0.5rem; }
+    .link-list a { color: var(--accent); margin-right: 0.75rem; }
+    table.jobs { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    table.jobs th, table.jobs td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    table.jobs th { color: var(--muted); font-weight: 600; }
+    table.jobs .amount { font-weight: 600; color: var(--green); }
+    table.jobs .instant { color: var(--green); }
+    table.jobs .proposal { color: var(--orange); }
+    table.jobs .expiry-soon { color: var(--red); }
+    .btn { display: inline-block; padding: 0.5rem 1rem; background: var(--accent); color: var(--bg); border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 0.5rem; }
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { background: var(--green); color: var(--bg); }
+    .btn-cycle { background: var(--orange); color: var(--bg); }
+    .status-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding: 1rem 1.25rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 1rem; }
+    .status-strip .earnings { font-size: 1.5rem; font-weight: 700; color: var(--green); }
+    .status-strip .meta { color: var(--muted); font-size: 0.9rem; }
+    .moltx-banner { padding: 0.75rem 1rem; background: var(--orange); color: var(--bg); border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; }
+    .moltx-banner a { color: var(--bg); text-decoration: underline; font-weight: 600; }
+    .more-actions { margin-top: 0.5rem; }
+    .more-actions summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
+    .more-actions .btns { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
   </style>
 </head>
 <body>
-  <h1><span class="live"></span> Sentinel_Nexus Admin</h1>
-  <p class="sub">Live stats · <a href="https://www.moltbook.com/u/Sentinel_Nexus" target="_blank" rel="noopener">Profile on Moltbook</a> · Refresh every 30s</p>
+  <header style="margin-bottom:1rem;">
+    <h1><span class="live"></span> Jobmaster Admin</h1>
+    <p class="sub">
+      <a href="/admin/dashboard" style="color:var(--accent)">Dashboard</a> ·
+      <a href="/hub" style="color:var(--accent)">Hub</a> ·
+      <a href="/admin/workers" style="color:var(--accent)">Workers</a> ·
+      <a href="/admin/completed" style="color:var(--accent)">Completed</a> ·
+      <a href="/admin/analysis" style="color:var(--accent)">Analysis</a> ·
+      <a href="/admin/brain" style="color:var(--accent)">Brain</a> ·
+      <a href="/admin/report-demo" style="color:var(--accent)">Report demo</a> ·
+      <a href="/" style="color:var(--muted)">Public site →</a>
+      <span style="color:var(--muted); margin-left:0.5rem;">· Refresh every 15s</span>
+    </p>
+  </header>
 
-  <div class="grid" id="grid"></div>
+  <div id="moltxBanner" class="moltx-banner" style="display:none;"></div>
+  <div id="grid"></div>
   <p class="updated" id="updated"></p>
 
   <script>
@@ -38,59 +83,382 @@
     const grid = $("grid");
     const updated = $("updated");
 
-    function escapeHtml(s) {
+    function esc(s) {
       const d = document.createElement("div");
-      d.textContent = s;
+      d.textContent = s == null ? "" : s;
       return d.innerHTML;
     }
 
-    function render(data) {
-      const m = data.moltbook || {};
-      const agent = (m.agent || {});
-      const stats = agent.stats || {};
-      const state = data.state || {};
+    function fmtDate(ms) {
+      if (!ms) return "—";
+      const d = new Date(typeof ms === "number" ? ms : parseInt(ms, 10));
+      return isNaN(d.getTime()) ? "—" : d.toLocaleString();
+    }
+
+    function timeAgo(mins) {
+      if (mins < 60) return mins + "m";
+      if (mins < 1440) return Math.floor(mins / 60) + "h";
+      return Math.floor(mins / 1440) + "d";
+    }
+
+    function renderAgency(data) {
+      const agents = data.agents || [];
+      const cronJobs = data.cronJobs || [];
+      const activity = data.activity || [];
+      const cronResults = data.cronResults || {};
+      const jobs = data.openBountiesHierarchy || [];
+      const humanFrontJobs = data.humanFrontJobs || [];
+      const brain = data.brain || {};
+
+      let totalEarned = 0, totalPosted = 0, totalClaimed = 0, totalCompleted = 0;
+      agents.forEach((a) => {
+        if (a.me) {
+          totalEarned += Number(a.me.total_earned) || 0;
+          totalPosted += Number(a.me.bounties_posted) || 0;
+          totalCompleted += Number(a.me.bounties_completed) || 0;
+        }
+        if (a.pending && a.pending.bounties) totalClaimed += a.pending.bounties.length;
+      });
+
+      const instantCount = jobs.filter((j) => j.canClaimInstant).length;
+      const proposalCount = jobs.filter((j) => j.needProposal).length;
+      const openFetchedAt = data.openBountiesFetchedAt ? new Date(data.openBountiesFetchedAt).toLocaleString() : "—";
 
       grid.innerHTML = `
-        <div class="card">
-          <h2>Moltbook</h2>
-          ${m.success
-            ? `<div class="value">${escapeHtml(String(agent.karma ?? 0))} karma</div>
-               <div class="row"><span class="muted">Posts</span><span>${escapeHtml(String(stats.posts ?? 0))}</span></div>
-               <div class="row"><span class="muted">Comments</span><span>${escapeHtml(String(stats.comments ?? 0))}</span></div>
-               <div class="row"><span class="muted">Subscriptions</span><span>${escapeHtml(String(stats.subscriptions ?? 0))}</span></div>
-               <div class="row"><span class="muted">Last active</span><span>${escapeHtml(agent.last_active ? new Date(agent.last_active).toLocaleString() : "—")}</span></div>`
-            : `<div class="error">${escapeHtml(m.error || "Not loaded")}</div>`}
+        <div class="status-strip">
+          <h2 style="margin:0 1rem 0 0;">Status</h2>
+          <span class="earnings" style="font-size:1.5rem;">${totalEarned} USDC</span>
+          <span class="meta" style="margin-left:0.5rem;">Earned</span>
+          <span class="meta">Agents: ${agents.length} · Pending: ${totalClaimed} · Instant: ${instantCount} · Proposal: ${proposalCount}</span>
+          <span class="meta">Updated ${openFetchedAt}</span>
+        </div>
+        <div class="card full">
+          <h2>Do this</h2>
+          <p class="row muted" style="font-size:0.9rem; margin:0 0 0.5rem;">Claim bounties, submit work, approve ours so workers get paid.</p>
+          <button class="btn btn-cycle" id="runCycleBtn" title="Claim instant, submit up to 2 pending per agent, auto-approve">Run cycle now</button>
+          <details class="more-actions" style="margin-top:0.5rem;">
+            <summary class="muted" style="cursor:pointer; font-size:0.85rem;">More actions</summary>
+            <div class="btns" style="margin-top:0.5rem;">
+              <button class="btn" id="claimAllBtn" ${instantCount === 0 ? "disabled" : ""}>Claim all instant (${instantCount})</button>
+              <button class="btn btn-secondary" id="submit2Btn" ${totalClaimed === 0 ? "disabled" : ""}>Complete 2 tasks</button>
+              <button class="btn" id="runDrainBtn" title="Run until no instant work left">Drain (run until empty)</button>
+            </div>
+          </details>
+        </div>
+        <div class="card full">
+          <h2>Open bounties we can claim</h2>
+          <p class="row muted" style="font-size:0.8rem; margin:0 0 0.5rem;">From ClawTasks, posted by others. Instant = claim immediately; Proposal = submit a proposal first.</p>
+          <table class="jobs" style="margin-top:0.5rem;">
+            <thead>
+              <tr><th>Amount</th><th>Mode</th><th>Title</th><th>Posted</th><th>Time open</th><th>Expiry</th><th>Claim?</th><th>Link</th></tr>
+            </thead>
+            <tbody>
+              ${jobs.slice(0, 50).map((j) => {
+                const expiryDate = j.expiryAt ? new Date(j.expiryAt) : null;
+                const expirySoon = expiryDate && (expiryDate - Date.now()) < 2 * 60 * 60 * 1000;
+                return `
+                  <tr>
+                    <td class="amount">${j.amount} USDC</td>
+                    <td class="${j.mode === "instant" ? "instant" : "proposal"}">${esc(j.mode)}</td>
+                    <td title="${esc(j.title)}">${esc(j.title.slice(0, 40))}${j.title.length > 40 ? "…" : ""}</td>
+                    <td>${j.created_at ? new Date(j.created_at).toLocaleString() : "—"}</td>
+                    <td>${timeAgo(j.timeOpenMins)}</td>
+                    <td class="${expirySoon ? "expiry-soon" : ""}">${expiryDate ? expiryDate.toLocaleString() : "—"}</td>
+                    <td>${j.canClaimInstant ? "Yes" : j.needProposal ? "Propose" : "—"}</td>
+                    <td><a href="https://clawtasks.com/bounty/${j.id}" target="_blank" rel="noopener">Open</a></td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+          ${jobs.length === 0 ? "<p class='muted'>No open bounties. Use Run cycle now or wait for auto-runs.</p>" : ""}
+        </div>
+
+        <div class="grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+        <div class="card" id="humanFrontCard">
+          <h2>Jobs posted on our site</h2>
+          <p class="row muted" style="font-size:0.8rem; margin:0 0 0.5rem;">Posted via Post a job; we claim first. Status below.</p>
+          <div id="humanFrontList"><p class="row muted">Loading…</p></div>
+          <p class="row"><a href="/post-job" style="color:var(--accent)">Post a job</a> · <a href="/job/track" style="color:var(--accent)">Track your job</a></p>
         </div>
         <div class="card">
-          <h2>OpenClaw state</h2>
-          <div class="row"><span class="muted">Last Moltbook check</span><span>${escapeHtml(state.lastMoltbookCheck || "—")}</span></div>
-          <div class="row"><span class="muted">Last post</span><span>${escapeHtml(state.lastPostAt || "—")}</span></div>
-          <div class="row"><span class="muted">Last weekly recap</span><span>${escapeHtml(state.lastWeeklyRecapAt || "—")}</span></div>
-          <div class="row"><span class="muted">Known followers</span><span>${escapeHtml(state.lastKnownFollowerCount != null ? String(state.lastKnownFollowerCount) : "—")}</span></div>
+          <h2>Agency & earnings</h2>
+          <div class="row"><span class="muted">Agents</span><span>${agents.length}</span></div>
+          <div class="row"><span class="muted">Posted</span><span>${totalPosted}</span></div>
+          <div class="row"><span class="muted">Pending (claimed)</span><span>${totalClaimed}</span></div>
+          <div class="row"><span class="muted">Completed</span><span class="status-ok">${totalCompleted}</span></div>
+          <div class="link-list">
+            <a href="https://clawtasks.com/dashboard" target="_blank" rel="noopener">ClawTasks dashboard</a>
+            <a href="https://clawtasks.com/bounties" target="_blank" rel="noopener">Bounties</a>
+            <a href="https://clawtasks.com/workers" target="_blank" rel="noopener">Workers</a>
+          </div>
         </div>
-        <div class="card" style="grid-column: 1 / -1;">
-          <h2>Learnings (sentinel-learnings.md)</h2>
-          <div class="learnings ${!data.learnings ? "empty" : ""}">${escapeHtml(data.learnings || "No learnings yet.")}</div>
+        <div class="card" id="moltxCard">
+          <h2>MoltX</h2>
+          <p class="row muted" style="font-size:0.8rem; margin:0 0 0.5rem;">When the brain records a move, we auto-register. One step: post claim tweet, then paste URL.</p>
+          <div id="moltxStatus"><p class="row muted">Loading…</p></div>
+          <div id="moltxClaimBox" style="display:none; margin-top:0.5rem;">
+            <p class="row muted" style="font-size:0.75rem;">Post this tweet on X, then paste the tweet URL:</p>
+            <pre id="moltxTweetText" style="font-size:0.7rem; white-space:pre-wrap; background:var(--bg); padding:0.5rem; border-radius:6px; margin:0.35rem 0;"></pre>
+            <input type="text" id="moltxTweetUrl" placeholder="https://x.com/yourhandle/status/…" style="width:100%; padding:0.5rem; margin-top:0.35rem; border-radius:6px; border:1px solid var(--border); background:var(--card); color:var(--text);" />
+            <button class="btn btn-secondary" type="button" id="moltxClaimBtn" style="margin-top:0.5rem;">Submit tweet URL to claim</button>
+            <p id="moltxClaimStatus" class="muted" style="font-size:0.8rem; margin-top:0.35rem;"></p>
+          </div>
         </div>
-        <div class="card" style="grid-column: 1 / -1;">
-          <h2>heartbeat-state.json (raw)</h2>
-          <pre class="state-json">${escapeHtml(JSON.stringify(state, null, 2))}</pre>
+        <div class="card">
+          <h2>Brain</h2>
+          <p class="row"><span class="muted">Model</span><span>${esc(brain.model || "—")}</span></p>
+          <p class="row muted" style="font-size:0.8rem; margin:0 0 0.35rem;">Runs every 5 min when gateway is on: claim, submit, post, recruit, report.</p>
+          <p class="row muted" style="font-size:0.75rem; margin-top:0.5rem;">24/7: <code>./sentinel-nexus/run-agency-24-7.sh</code>. Or use <strong>Run cycle now</strong> above.</p>
+          ${brain.report ? `<pre class="brain-report" style="margin:0; font-size:0.75rem; white-space:pre-wrap; color:var(--muted); max-height:80px; overflow:auto;">${esc(brain.report)}</pre>` : "<p class='row muted'>No report yet.</p>"}
+          ${brain.learnings ? `<details style="margin-top:0.5rem;"><summary class="muted" style="cursor:pointer; font-size:0.8rem;">Recent learnings</summary><pre style="margin:0.35rem 0 0; font-size:0.7rem; white-space:pre-wrap; color:var(--muted); max-height:100px; overflow:auto;">${esc(brain.learnings)}</pre></details>` : ""}
+        </div>
+        <div class="card">
+          <h2>Landing page review</h2>
+          <p class="row muted" style="font-size:0.8rem; margin:0 0 0.5rem;">Kimi 2.5 reviews the public landing page (copy, UX, conversion).</p>
+          <button class="btn" id="reviewLandingBtn" type="button">Review with Kimi 2.5</button>
+          <p id="landingReviewStatus" class="row muted" style="font-size:0.8rem; margin-top:0.5rem; display:none;"></p>
+          <div id="landingReviewResult" style="display:none; margin-top:0.75rem; padding:0.75rem; background:var(--bg); border:1px solid var(--border); border-radius:8px; font-size:0.85rem; line-height:1.5; white-space:pre-wrap; max-height:320px; overflow:auto;"></div>
+        </div>
+        <div class="card full">
+          <h2>Agents</h2>
+          <div class="agent-block">
+            ${agents.map((a) => {
+              const m = a.me || {};
+              const role = a.role || "worker";
+              return `
+                <div class="agent">
+                  <div class="name">${esc(a.name)} <span class="muted" style="font-weight:400; font-size:0.75rem;">${esc(role)}</span> ${a.hasKey ? "" : "<span class='error'>(no key)</span>"}</div>
+                  <div class="stat">Earned: ${esc(m.total_earned)} USDC · Posted: ${esc(m.bounties_posted)} · Completed: ${esc(m.bounties_completed)}</div>
+                  <div class="stat">Reputation: ${esc(m.reputation_score != null ? m.reputation_score : "—")} <span class="muted">(target 95+)</span> · Success: ${esc(m.success_rate != null ? m.success_rate : "—")}</div>
+                  <div class="stat">Wallet: ${esc(m.wallet_address || "—")}</div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+
+        <div class="card full">
+          <h2>How it's running</h2>
+          <p class="row muted" style="font-size:0.8rem; margin:0 0 0.5rem;">Scheduled tasks and last output.</p>
+          ${cronJobs.map((j) => `
+            <div class="cron-job">
+              <span>${esc(j.name)}</span>
+              <span class="${j.lastStatus === "ok" ? "status-ok" : "status-error"}">${esc(j.lastStatus || "—")}</span>
+              <span class="muted">Last: ${fmtDate(j.lastRunAt)}</span>
+            </div>
+          `).join("")}
+          <div style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid var(--border);">
+            <p class="row muted" style="font-size:0.75rem; margin:0 0 0.25rem;">ClawTasks</p>
+            <p class="muted" style="font-size:0.8rem; white-space:pre-wrap; max-height:80px; overflow:auto;">${esc((cronResults.clawtasks || "").slice(0, 300))}${(cronResults.clawtasks || "").length > 300 ? "…" : ""}</p>
+            <p class="row muted" style="font-size:0.75rem; margin:0.75rem 0 0.25rem;">Moltbook</p>
+            <p class="muted" style="font-size:0.8rem; white-space:pre-wrap; max-height:80px; overflow:auto;">${esc((cronResults.moltbook || "").slice(0, 300))}${(cronResults.moltbook || "").length > 300 ? "…" : ""}</p>
+          </div>
+        </div>
         </div>
       `;
       updated.textContent = "Updated " + new Date().toLocaleTimeString();
+
+      const claimBtn = document.getElementById("claimAllBtn");
+      if (claimBtn) {
+        claimBtn.onclick = () => {
+          claimBtn.disabled = true;
+          claimBtn.textContent = "Claiming…";
+          fetch("/api/claim-instant", { method: "POST" })
+            .then((r) => r.json())
+            .then((d) => {
+              claimBtn.textContent = d.claimed ? "Claimed " + d.claimed + " · Refresh" : (d.error || "Done");
+              setTimeout(fetchAgency, 2000);
+            })
+            .catch((e) => {
+              claimBtn.textContent = "Error";
+              claimBtn.disabled = false;
+            });
+        };
+      }
+      const submit2Btn = document.getElementById("submit2Btn");
+      if (submit2Btn) {
+        submit2Btn.onclick = () => {
+          submit2Btn.disabled = true;
+          submit2Btn.textContent = "Submitting…";
+          fetch("/api/submit-pending", { method: "POST" })
+            .then((r) => r.json())
+            .then((d) => {
+              submit2Btn.textContent = d.submitted ? "Submitted " + d.submitted + " · Refresh" : (d.error || "No pending");
+              setTimeout(fetchAgency, 2000);
+            })
+            .catch((e) => {
+              submit2Btn.textContent = "Error";
+              submit2Btn.disabled = false;
+            });
+        };
+      }
+      const runCycleBtn = document.getElementById("runCycleBtn");
+      if (runCycleBtn) {
+        runCycleBtn.onclick = () => {
+          runCycleBtn.disabled = true;
+          runCycleBtn.textContent = "Running cycle…";
+          fetch("/api/run-cycle", { method: "POST" })
+            .then((r) => r.json())
+            .then((d) => {
+              const msg = [d.claimed != null && (d.claimed + " claimed"), d.submitted != null && (d.submitted + " submitted"), d.approved != null && d.approved > 0 && (d.approved + " approved")].filter(Boolean).join("; ") || d.error || "Done";
+              runCycleBtn.textContent = msg + " · Refresh";
+              setTimeout(fetchAgency, 2000);
+            })
+            .catch((e) => {
+              runCycleBtn.textContent = "Error";
+              runCycleBtn.disabled = false;
+            });
+        };
+      }
+      const runDrainBtn = document.getElementById("runDrainBtn");
+      if (runDrainBtn) {
+        runDrainBtn.onclick = () => {
+          runDrainBtn.disabled = true;
+          runDrainBtn.textContent = "Starting drain…";
+          fetch("/api/run-drain", { method: "POST" })
+            .then((r) => r.json())
+            .then((d) => {
+              runDrainBtn.textContent = d.started ? "Drain running in background · Refresh" : (d.error || "Done");
+              setTimeout(fetchAgency, 3000);
+            })
+            .catch((e) => {
+              runDrainBtn.textContent = "Error";
+              runDrainBtn.disabled = false;
+            });
+        };
+      }
+      const reviewLandingBtn = document.getElementById("reviewLandingBtn");
+      const landingReviewStatusP = document.getElementById("landingReviewStatus");
+      const landingReviewResult = document.getElementById("landingReviewResult");
+      if (reviewLandingBtn) {
+        reviewLandingBtn.onclick = () => {
+          reviewLandingBtn.disabled = true;
+          if (landingReviewStatusP) { landingReviewStatusP.style.display = "block"; landingReviewStatusP.textContent = "Asking Kimi 2.5 to review the landing page…"; }
+          if (landingReviewResult) { landingReviewResult.style.display = "none"; landingReviewResult.textContent = ""; }
+          fetch("/api/review-landing")
+            .then((r) => r.json())
+            .then((d) => {
+              if (landingReviewStatusP) landingReviewStatusP.textContent = d.review ? "Done (Kimi 2.5)." : (d.error || "No review.");
+              if (landingReviewResult && d.review) {
+                landingReviewResult.textContent = d.review;
+                landingReviewResult.style.display = "block";
+              }
+              reviewLandingBtn.disabled = false;
+            })
+            .catch((e) => {
+              if (landingReviewStatusP) landingReviewStatusP.textContent = "Error: " + e.message;
+              reviewLandingBtn.disabled = false;
+            });
+        };
+      }
     }
 
-    function fetchStats() {
-      fetch("/api/stats")
+    function fetchHumanFrontStatus() {
+      fetch("/api/human-front-jobs/status")
         .then((r) => r.json())
-        .then(render)
-        .catch((e) => {
-          grid.innerHTML = `<div class="card" style="grid-column:1/-1;"><div class="error">Failed to load: ${escapeHtml(String(e.message))}. Is the server running on this port?</div></div>`;
+        .then((d) => {
+          const list = document.getElementById("humanFrontList");
+          if (!list) return;
+          if (!d.jobs || !d.jobs.length) {
+            list.innerHTML = "<p class='row muted'>None yet. <a href='/post-job' style='color:var(--accent)'>Post a job</a></p>";
+            return;
+          }
+          list.innerHTML = d.jobs.slice(-20).reverse().map((j) => {
+            const statusClass = j.status === "delivered" ? "status-ok" : j.status === "in_progress" ? "instant" : "";
+            let time = "";
+            if (j.status === "delivered" && j.durationMinutes != null) time = " · " + j.durationMinutes + " min";
+            else if (j.deliveredAt) time = " · " + new Date(j.deliveredAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
+            const title = esc((j.title || j.bountyId || "").slice(0, 50)) + ((j.title || "").length > 50 ? "…" : "");
+            let links = "";
+            if (j.trackUrl) links += "<a href=\"" + esc(j.trackUrl) + "\" target=\"_blank\" rel=\"noopener\" style=\"font-size:0.75rem; margin-right:0.5rem;\">Track</a>";
+            if (j.bountyUrl) links += "<a href=\"" + esc(j.bountyUrl) + "\" target=\"_blank\" rel=\"noopener\" style=\"font-size:0.75rem;\">ClawTasks</a>";
+            return "<p class=\"row\" style=\"margin:0.35rem 0;\"><strong>" + title + "</strong> <span class=\"muted\" style=\"font-size:0.8rem;\">" + (j.createdAt ? new Date(j.createdAt).toLocaleDateString() : "") + "</span> <span class=\"" + statusClass + "\" style=\"font-size:0.75rem; font-weight:600;\">" + esc(j.status) + "</span>" + (time ? "<span class=\"muted\" style=\"font-size:0.75rem;\">" + esc(time) + "</span>" : "") + (links ? " <span style=\"font-size:0.75rem;\">" + links + "</span>" : "") + "</p>";
+          }).join("");
+        })
+        .catch(() => {
+          const list = document.getElementById("humanFrontList");
+          if (list) list.innerHTML = "<p class='row muted'>Could not load. <a href='/post-job' style='color:var(--accent)'>Post a job</a></p>";
         });
     }
 
-    fetchStats();
-    setInterval(fetchStats, 30000);
+    function fetchMoltxStatus() {
+      fetch("/api/moltx/status")
+        .then((r) => r.json())
+        .then((d) => {
+          const statusEl = document.getElementById("moltxStatus");
+          const boxEl = document.getElementById("moltxClaimBox");
+          const tweetEl = document.getElementById("moltxTweetText");
+          const urlEl = document.getElementById("moltxTweetUrl");
+          const claimBtn = document.getElementById("moltxClaimBtn");
+          const claimStatusEl = document.getElementById("moltxClaimStatus");
+          if (!statusEl) return;
+          if (d.claimed) {
+            statusEl.innerHTML = "<p class='row status-ok'>Claimed · " + esc(d.agent_name || "MoltX") + "</p>";
+            if (boxEl) boxEl.style.display = "none";
+            const banner = document.getElementById("moltxBanner"); if (banner) banner.style.display = "none";
+            return;
+          }
+          if (d.registered && d.claim_tweet_text) {
+            statusEl.innerHTML = "<p class='row'>Registered. Post the tweet below, then paste URL.</p>";
+            const banner = document.getElementById("moltxBanner");
+            if (banner) { banner.style.display = "block"; banner.innerHTML = "MoltX: One step left — post the claim tweet on X, then paste the URL in the <a href=\"#moltxCard\">MoltX</a> card below."; }
+            if (boxEl) boxEl.style.display = "block";
+            if (tweetEl) tweetEl.textContent = d.claim_tweet_text;
+            if (claimBtn) {
+              claimBtn.onclick = function () {
+                const url = (urlEl && urlEl.value) ? urlEl.value.trim() : "";
+                if (!url) { if (claimStatusEl) claimStatusEl.textContent = "Paste the tweet URL first."; return; }
+                claimBtn.disabled = true;
+                if (claimStatusEl) claimStatusEl.textContent = "Submitting…";
+                fetch("/api/moltx/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tweet_url: url }) })
+                  .then((r) => r.json())
+                  .then((res) => {
+                    if (claimStatusEl) claimStatusEl.textContent = res.ok ? "Claimed." : (res.error || "Failed.");
+                    if (res.ok) fetchMoltxStatus();
+                  })
+                  .catch(() => { if (claimStatusEl) claimStatusEl.textContent = "Request failed."; })
+                  .finally(() => { claimBtn.disabled = false; });
+              };
+            }
+            return;
+          }
+          if (d.registered) {
+            statusEl.innerHTML = "<p class='row muted'>Registered. No claim code (already claimed?).</p>";
+            if (boxEl) boxEl.style.display = "none";
+            return;
+          }
+          statusEl.innerHTML = "<p class='row muted'>Not registered yet. Brain will auto-register when it records MoltX move (or <a href=\"/admin/brain\" style=\"color:var(--accent)\">Evaluate MoltX</a>).</p>";
+          if (boxEl) boxEl.style.display = "none";
+          const banner = document.getElementById("moltxBanner"); if (banner) banner.style.display = "none";
+        })
+        .catch(() => {
+          const statusEl = document.getElementById("moltxStatus");
+          if (statusEl) statusEl.innerHTML = "<p class='row muted'>Could not load MoltX status.</p>";
+        });
+    }
+
+    function fetchAgency() {
+      fetch("/api/agency")
+        .then((r) => {
+          const ct = r.headers.get("Content-Type") || "";
+          if (!ct.includes("application/json")) {
+            return r.text().then((t) => { throw new Error("Server returned non-JSON. Restart with: node sentinel-nexus/admin/server.js — " + (t || r.status)); });
+          }
+          return r.json();
+        })
+        .then((data) => {
+          renderAgency(data);
+          fetchHumanFrontStatus();
+          fetchMoltxStatus();
+        })
+        .catch((e) => {
+          grid.innerHTML = `<div class="card full"><div class="error">${esc(e.message || "Failed to load")}. Start with: node sentinel-nexus/admin/server.js</div></div>`;
+        });
+    }
+
+    fetchAgency();
+    setInterval(fetchAgency, 15000);
   </script>
 </body>
 </html>

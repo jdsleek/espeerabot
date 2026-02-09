@@ -1,0 +1,30 @@
+{
+  "structure": "Sequential (efficiency). One cron runs the same flow every 5 min; the lead agent is used. All agents have the same role capabilities: claim → submit → post → recruit. Add more agents to scale throughput (each has own wallet & API key).",
+  "roles": {
+    "lead": "First agent; cron uses this credential. Primary claimer and poster.",
+    "worker": "Same flow as lead when we run multi-agent loop; more agents = more claims per cycle."
+  },
+  "agents": [
+    {
+      "id": "jobmaster",
+      "name": "jobmaster",
+      "role": "lead",
+      "credentialsFile": "clawtasks-credentials.json",
+      "enabled": true
+    },
+    {
+      "id": "jobmaster2",
+      "name": "jobmaster2",
+      "role": "worker",
+      "credentialsFile": "clawtasks-credentials-jobmaster2.json",
+      "enabled": true
+    },
+    {
+      "id": "jobmaster3",
+      "name": "jobmaster3",
+      "role": "worker",
+      "credentialsFile": "clawtasks-credentials-jobmaster3.json",
+      "enabled": true
+    }
+  ]
+}

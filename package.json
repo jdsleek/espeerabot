@@ -8,7 +8,13 @@
     "start": "npx serve .",
     "sentinel-admin": "node sentinel-nexus/admin/server.js"
   },
-  "keywords": ["memorial", "livestream"],
+  "keywords": [
+    "memorial",
+    "livestream"
+  ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "ethers": "^6.16.0"
+  }
 }
