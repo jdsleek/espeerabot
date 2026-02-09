@@ -226,15 +226,17 @@
             ${agents.map((a) => {
               const m = a.me || {};
               const role = a.role || "worker";
+              const n = (v) => (v != null && v !== "" ? String(v) : "—");
               return `
                 <div class="agent">
                   <div class="name">${esc(a.name)} <span class="muted" style="font-weight:400; font-size:0.75rem;">${esc(role)}</span> ${a.hasKey ? "" : "<span class='error'>(no key)</span>"}</div>
-                  <div class="stat">Earned: ${esc(m.total_earned)} USDC · Posted: ${esc(m.bounties_posted)} · Completed: ${esc(m.bounties_completed)}</div>
-                  <div class="stat">Reputation: ${esc(m.reputation_score != null ? m.reputation_score : "—")} <span class="muted">(target 95+)</span> · Success: ${esc(m.success_rate != null ? m.success_rate : "—")}</div>
+                  <div class="stat">Earned: ${esc(n(m.total_earned))} USDC · Posted: ${esc(n(m.bounties_posted))} · Completed: ${esc(n(m.bounties_completed))}</div>
+                  <div class="stat">Reputation: ${esc(n(m.reputation_score))} <span class="muted">(target 95+)</span> · Success: ${esc(n(m.success_rate))}</div>
                   <div class="stat">Wallet: ${esc(m.wallet_address || "—")}</div>
                 </div>
               `;
             }).join("")}
+            ${agents.some((a) => !a.hasKey) ? "<p class='muted' style='font-size:0.8rem; margin-top:0.75rem;'>Add ClawTasks credentials to enable stats and claiming. On Railway: set OPENCLAW_STATE_DIR and add credential files to the volume.</p>" : ""}
           </div>
         </div>
 

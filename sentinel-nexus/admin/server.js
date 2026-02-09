@@ -13,7 +13,11 @@ const crypto = require("crypto");
 
 // Railway sets PORT; locally use ADMIN_PORT or 3880
 const PORT = Number(process.env.PORT || process.env.ADMIN_PORT) || 3880;
-const OPENCLAW = process.env.OPENCLAW_STATE_DIR || path.join(process.env.HOME || process.env.USERPROFILE || "", ".openclaw");
+// Use existing Railway volume when present (Railway injects RAILWAY_VOLUME_MOUNT_PATH)
+const RAILWAY_VOLUME = (process.env.RAILWAY_VOLUME_MOUNT_PATH || "").trim();
+const OPENCLAW =
+  process.env.OPENCLAW_STATE_DIR ||
+  (RAILWAY_VOLUME ? path.join(RAILWAY_VOLUME, ".openclaw") : path.join(process.env.HOME || process.env.USERPROFILE || "", ".openclaw"));
 const SENTINEL_DIR = path.join(__dirname, "..");
 
 function readJson(filePath) {
@@ -34,6 +38,7 @@ function readText(filePath) {
 
 function getWorkspaceDir() {
   if (process.env.OPENCLAW_WORKSPACE_DIR) return process.env.OPENCLAW_WORKSPACE_DIR;
+  if (RAILWAY_VOLUME) return path.join(RAILWAY_VOLUME, "workspace");
   const configPath = path.join(OPENCLAW, "openclaw.json");
   const cfg = readJson(configPath);
   return (cfg && cfg.agents && cfg.agents.defaults && cfg.agents.defaults.workspace) || path.join(OPENCLAW, "workspace");
@@ -2524,9 +2529,45 @@ setInterval(async () => {
   } catch (_) {}
 }, 15 * 60 * 1000);
 
+// Autonomous run-cycle on Railway: no external cron, so run claim/submit/approve every N min
+const autonomousCycleMin = Number(process.env.RUN_AUTONOMOUS_CYCLE_MIN) || (process.env.PORT ? 20 : 0);
+if (autonomousCycleMin > 0) {
+  const cycleMs = autonomousCycleMin * 60 * 1000;
+  const triggerCycle = () => {
+    const req = http.request(
+      {
+        hostname: "127.0.0.1",
+        port: PORT,
+        path: "/api/run-cycle",
+        method: "POST",
+      },
+      (res) => {
+        let body = "";
+        res.on("data", (c) => (body += c));
+        res.on("end", () => {
+          try {
+            const d = JSON.parse(body);
+            if (d.claimed || d.submitted || d.approved) {
+              console.log("[autonomous] cycle:", d.message || body);
+            }
+          } catch (_) {}
+        });
+      }
+    );
+    req.on("error", () => {});
+    req.end();
+  };
+  setTimeout(triggerCycle, 2 * 60 * 1000);
+  setInterval(triggerCycle, cycleMs);
+  console.log(`Autonomous cycle every ${autonomousCycleMin} min (Railway).`);
+}
+
 const listenHost = process.env.PORT ? "0.0.0.0" : "127.0.0.1";
 server.listen(PORT, listenHost, () => {
   console.log(`Jobmaster Agency: http://${listenHost}:${PORT}`);
+  if (RAILWAY_VOLUME) {
+    console.log(`  Using Railway volume: ${RAILWAY_VOLUME} (workspace: ${getWorkspaceDir()}, state: ${OPENCLAW})`);
+  }
   console.log("  Hub (all links): /hub");
   console.log("  User: /   /post-job   /job/track   /job/report");
   console.log("  Admin: /admin   /admin/dashboard   /admin/workers   /admin/completed   /admin/analysis   /admin/brain   /admin/report-demo");

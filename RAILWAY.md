@@ -6,6 +6,7 @@ This repo is set up so **espeerabot.up.railway.app** (or your Railway domain) sh
 
 - **Start command:** `node sentinel-nexus/admin/server.js` (set in `railway.json` and `package.json` "start").
 - **Root URL `/`** serves the agency marketing/landing page; `/admin/dashboard`, `/hub`, `/admin/brain`, etc. work as usual.
+- **Existing volume:** If you already have a volume attached, Railway injects **`RAILWAY_VOLUME_MOUNT_PATH`** (e.g. `/data`). The app **uses it automatically**: workspace = `{volume}/workspace`, credentials/state = `{volume}/.openclaw`. No need to set `OPENCLAW_WORKSPACE_DIR` or `OPENCLAW_STATE_DIR` unless you want to override.
 
 ## Environment variables (Railway dashboard → Variables)
 
@@ -13,7 +14,8 @@ This repo is set up so **espeerabot.up.railway.app** (or your Railway domain) sh
 |----------|----------|-------------|
 | `PORT` | **Set by Railway** | Railway injects this; the server uses it automatically. Do not set manually unless overriding. |
 | `OPENCLAW_WORKSPACE_DIR` | Optional | Persistent workspace path. If you add a **volume** and mount it at `/data`, set to `/data/workspace` so agency data (discovery-feed, MoltX state, etc.) persists across deploys. |
-| `OPENCLAW_STATE_DIR` | Optional | Default (no config) is `~/.openclaw` which may not exist on Railway. If using a volume at `/data`, set to `/data/.openclaw` and ensure `openclaw.json` exists there if you need workspace from config. |
+| `OPENCLAW_STATE_DIR` | Optional | Default is `~/.openclaw`. Set to `/data/.openclaw` with a volume at `/data` and add ClawTasks credential files there so agents and APIs work. |
+| `RUN_AUTONOMOUS_CYCLE_MIN` | Optional | Minutes between auto run-cycles (claim/submit/approve). Default **20** on Railway when `PORT` is set. |
 | `ADMIN_PORT` | Optional | Only if you are **not** using Railway’s `PORT` (e.g. local override). Normally leave unset. |
 | `REPORT_MAX_TOKENS` | Optional | Max tokens for report generation (default 8192). |
 | API keys (Kimi, etc.) | As needed | Any keys used by the server (e.g. report generation) must be set in Railway Variables; the server reads `process.env`. |
@@ -28,6 +30,18 @@ This repo is set up so **espeerabot.up.railway.app** (or your Railway domain) sh
    - (Optional) `OPENCLAW_STATE_DIR=/data/.openclaw` if you use openclaw config there.
 5. **HTTP proxy / public domain:** Enable in Railway so you get a URL like `espeerabot.up.railway.app`.
 6. Redeploy after changing variables or the start command.
+
+## Production: full business and share with users
+
+To run **fully autonomous** and have **all APIs** and the dashboard work for users:
+
+1. **Volume** — Add a Railway volume, mount path **`/data`**.
+2. **Variables** — Set **`OPENCLAW_WORKSPACE_DIR=/data/workspace`** and **`OPENCLAW_STATE_DIR=/data/.openclaw`**.
+3. **Credentials** — Add ClawTasks credential files into the volume at `/data/.openclaw/` (e.g. `clawtasks-credentials.json` with `{ "api_key": "YOUR_KEY" }`) so agents show stats and claim/submit work. Same format as `~/.openclaw/clawtasks-credentials.json` locally.
+4. **Autonomous cycle** — When `PORT` is set (Railway), the server runs a run-cycle every **20 minutes** automatically. Set **`RUN_AUTONOMOUS_CYCLE_MIN=15`** to change the interval.
+5. **APIs** — With credentials in place, `/api/agency`, POST `/api/run-cycle`, POST `/api/claim-instant`, `/api/post-job`, `/job/track`, MoltX, etc. all work.
+
+Without credentials the site and APIs still load; agents show "(no key)" and "—" until credential files are added. Optional env: **`RUN_AUTONOMOUS_CYCLE_MIN`** (minutes; default 20 on Railway).
 
 ## After deploy
 
