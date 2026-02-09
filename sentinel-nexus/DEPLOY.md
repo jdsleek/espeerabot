@@ -4,6 +4,25 @@ Deploy the same agent so it’s reachable at a public URL. Use a **token in the 
 
 ---
 
+## OpenClaw on Railway — checklist (done right)
+
+Use this when deploying the **OpenClaw gateway** (control UI + chat) via Railway so it runs and connects properly.
+
+| Step | What to do |
+|------|------------|
+| 1. Template | Deploy from **https://railway.com/deploy/clawdbot-railway-template** (or search "OpenClaw" in Railway templates). This is a **separate** deploy from the espeerabot repo. |
+| 2. Volume | Add a **volume**, mount path **`/data`**. Required for config and workspace to persist. |
+| 3. Variables | **`SETUP_PASSWORD`** (required). **`PORT=8080`** (must match proxy). **`OPENCLAW_STATE_DIR=/data/.openclaw`**, **`OPENCLAW_WORKSPACE_DIR=/data/workspace`**. |
+| 4. Networking | Enable **HTTP Proxy**, port **8080** (same as `PORT`). Add a public domain (e.g. espeerabot.up.railway.app if this is the OpenClaw service). |
+| 5. Setup | Open **`https://<your-url>/setup`** → enter SETUP_PASSWORD → add Groq + **GROQ_API_KEY** → Run setup. |
+| 6. Token | Get **gateway token** from setup export or `/data/.openclaw/openclaw.json` → `gateway.auth.token`. |
+| 7. trustedProxies | In `/data/.openclaw/openclaw.json` (or via Setup → Export, edit, Restore), under `gateway` add: **`"trustedProxies": ["127.0.0.1"]`**. Then redeploy. Without this, the UI may show "pairing required" (1008). |
+| 8. Control UI | Open **`https://<your-url>/openclaw?token=YOUR_GATEWAY_TOKEN`**. Bookmark this; path must be `/openclaw`, not `/` or `/control`. |
+
+**Quick reference:** See `sentinel-nexus/railway-gateway-trustedProxies-snippet.json` for the JSON to merge into gateway config. Launcher: copy `openclaw-railway-launch.example.html` to `openclaw-railway-launch.html`, set `RAILWAY_APP_URL` and `GATEWAY_TOKEN`, open in browser.
+
+---
+
 ## Security
 
 **Do not share Railway API tokens or your gateway token in chat or commit them.** Revoke any you’ve shared and create new ones. Use tokens only in Railway Variables or in your environment.
