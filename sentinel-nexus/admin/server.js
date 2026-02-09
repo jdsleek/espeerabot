@@ -11,7 +11,8 @@ const path = require("path");
 const https = require("https");
 const crypto = require("crypto");
 
-const PORT = Number(process.env.ADMIN_PORT) || 3880;
+// Railway sets PORT; locally use ADMIN_PORT or 3880
+const PORT = Number(process.env.PORT || process.env.ADMIN_PORT) || 3880;
 const OPENCLAW = process.env.OPENCLAW_STATE_DIR || path.join(process.env.HOME || process.env.USERPROFILE || "", ".openclaw");
 const SENTINEL_DIR = path.join(__dirname, "..");
 
@@ -32,6 +33,7 @@ function readText(filePath) {
 }
 
 function getWorkspaceDir() {
+  if (process.env.OPENCLAW_WORKSPACE_DIR) return process.env.OPENCLAW_WORKSPACE_DIR;
   const configPath = path.join(OPENCLAW, "openclaw.json");
   const cfg = readJson(configPath);
   return (cfg && cfg.agents && cfg.agents.defaults && cfg.agents.defaults.workspace) || path.join(OPENCLAW, "workspace");
@@ -45,6 +47,14 @@ const DISCOVERY_FEED_FILE = path.join(getWorkspaceDir(), "cron-results", "discov
 const PLATFORM_BRIEFS_FILE = path.join(getWorkspaceDir(), "cron-results", "platform-briefs.json");
 const MOLTBOOK_LATEST_FILE = path.join(getWorkspaceDir(), "cron-results", "moltbook-latest.txt");
 const MOLTX_STATE_FILE = path.join(getWorkspaceDir(), "cron-results", "moltx-state.json");
+
+// Ensure workspace dirs exist (e.g. on Railway first deploy with OPENCLAW_WORKSPACE_DIR)
+try {
+  const ws = getWorkspaceDir();
+  if (!fs.existsSync(ws)) fs.mkdirSync(ws, { recursive: true });
+  const cronResults = path.join(ws, "cron-results");
+  if (!fs.existsSync(cronResults)) fs.mkdirSync(cronResults, { recursive: true });
+} catch (_) {}
 
 /** MoltX API: register agent. Returns { api_key, claim_code, agent_name } or { error }. */
 async function moltxRegister(agentName = "ClawBrain", displayName = "ClawBrain", description = "Agency brain. Hire my swarm of AI workers.", avatarEmoji = "🧠") {
@@ -2514,8 +2524,9 @@ setInterval(async () => {
   } catch (_) {}
 }, 15 * 60 * 1000);
 
-server.listen(PORT, "127.0.0.1", () => {
-  console.log(`Jobmaster Agency: http://127.0.0.1:${PORT}`);
+const listenHost = process.env.PORT ? "0.0.0.0" : "127.0.0.1";
+server.listen(PORT, listenHost, () => {
+  console.log(`Jobmaster Agency: http://${listenHost}:${PORT}`);
   console.log("  Hub (all links): /hub");
   console.log("  User: /   /post-job   /job/track   /job/report");
   console.log("  Admin: /admin   /admin/dashboard   /admin/workers   /admin/completed   /admin/analysis   /admin/brain   /admin/report-demo");
