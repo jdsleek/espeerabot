@@ -61,6 +61,59 @@ try {
   if (!fs.existsSync(cronResults)) fs.mkdirSync(cronResults, { recursive: true });
 } catch (_) {}
 
+// Railway: copy credentials from env to volume on startup so everything works 100% (use Railway Variables)
+function writeCredentialsFromEnv() {
+  try {
+    if (!fs.existsSync(OPENCLAW)) fs.mkdirSync(OPENCLAW, { recursive: true });
+    const pairs = [
+      [process.env.CLAWTASKS_CREDENTIALS_JSON, "clawtasks-credentials.json"],
+      [process.env.CLAWTASKS_CREDENTIALS_JOBMASTER2_JSON, "clawtasks-credentials-jobmaster2.json"],
+      [process.env.CLAWTASKS_CREDENTIALS_JOBMASTER3_JSON, "clawtasks-credentials-jobmaster3.json"],
+    ];
+    for (const [raw, filename] of pairs) {
+      if (!raw || typeof raw !== "string") continue;
+      const filePath = path.join(OPENCLAW, filename);
+      if (fs.existsSync(filePath)) continue;
+      let jsonStr = raw.trim();
+      try {
+        if (jsonStr.startsWith("eyJ") || /^[A-Za-z0-9+/=]+$/.test(jsonStr)) {
+          jsonStr = Buffer.from(jsonStr, "base64").toString("utf8");
+        }
+        const parsed = JSON.parse(jsonStr);
+        if (parsed && (parsed.api_key || parsed.apiKey)) {
+          fs.writeFileSync(filePath, JSON.stringify(parsed, null, 2), "utf8");
+          console.log("[Railway] Wrote credentials from env: " + filename);
+        }
+      } catch (_) {}
+    }
+    const bulk = process.env.RAILWAY_CLAWTASKS_CREDENTIALS;
+    if (bulk && typeof bulk === "string") {
+      let obj;
+      try {
+        const s = bulk.trim();
+        obj = s.startsWith("eyJ") ? JSON.parse(Buffer.from(s, "base64").toString("utf8")) : JSON.parse(s);
+      } catch (_) { return; }
+      if (!obj || typeof obj !== "object") return;
+      for (const [filename, value] of Object.entries(obj)) {
+        if (!filename || !value) continue;
+        const filePath = path.join(OPENCLAW, filename);
+        if (fs.existsSync(filePath)) continue;
+        const jsonStr = typeof value === "string" ? value : JSON.stringify(value);
+        try {
+          const parsed = JSON.parse(jsonStr);
+          if (parsed && (parsed.api_key || parsed.apiKey)) {
+            fs.writeFileSync(filePath, JSON.stringify(parsed, null, 2), "utf8");
+            console.log("[Railway] Wrote credentials from RAILWAY_CLAWTASKS_CREDENTIALS: " + filename);
+          }
+        } catch (_) {}
+      }
+    }
+  } catch (e) {
+    console.error("[Railway] writeCredentialsFromEnv:", e.message);
+  }
+}
+writeCredentialsFromEnv();
+
 /** MoltX API: register agent. Returns { api_key, claim_code, agent_name } or { error }. */
 async function moltxRegister(agentName = "ClawBrain", displayName = "ClawBrain", description = "Agency brain. Hire my swarm of AI workers.", avatarEmoji = "🧠") {
   const res = await httpsPostJson("https://moltx.io/v1/agents/register", {
@@ -1161,11 +1214,13 @@ const server = http.createServer((req, res) => {
       const ourNames = new Set((agentsConfig || []).filter((a) => a.enabled !== false).map((a) => (a.name || a.id).toLowerCase()));
       const completed = [];
       const seenIds = new Set();
+      let agentsWithKey = 0;
       // Fetch completed bounties per agent (API may return only that agent's completions)
       for (const agent of (agentsConfig || []).filter((a) => a.enabled !== false)) {
         const credPath = path.join(OPENCLAW, agent.credentialsFile || "clawtasks-credentials.json");
         const apiKey = (readJson(credPath) || {}).api_key;
         if (!apiKey) continue;
+        agentsWithKey++;
         try {
           const res = await fetchClawTasks(apiKey, "/bounties?status=completed");
           const list = (res && res.bounties) ? res.bounties : [];
@@ -1230,10 +1285,15 @@ const server = http.createServer((req, res) => {
         return tb - ta;
       });
       res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-      res.end(JSON.stringify({ completed }));
+      res.end(JSON.stringify({
+        completed,
+        noCredentials: agentsWithKey === 0,
+        openclawPath: OPENCLAW,
+        railwayVolume: RAILWAY_VOLUME || null,
+      }));
     })().catch((e) => {
       res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: String(e.message || e), completed: [] }));
+      res.end(JSON.stringify({ error: String(e.message || e), completed: [], noCredentials: false }));
     });
     return;
   }

@@ -41,7 +41,21 @@ To run **fully autonomous** and have **all APIs** and the dashboard work for use
 4. **Autonomous cycle** — When `PORT` is set (Railway), the server runs a run-cycle every **20 minutes** automatically. Set **`RUN_AUTONOMOUS_CYCLE_MIN=15`** to change the interval.
 5. **APIs** — With credentials in place, `/api/agency`, POST `/api/run-cycle`, POST `/api/claim-instant`, `/api/post-job`, `/job/track`, MoltX, etc. all work.
 
-Without credentials the site and APIs still load; agents show "(no key)" and "—" until credential files are added. Optional env: **`RUN_AUTONOMOUS_CYCLE_MIN`** (minutes; default 20 on Railway).
+Without credentials the site and APIs still load; agents show "(no key)" and "—" until credential files are added. **Completed work** and dashboard stats come from ClawTasks; add the same credential files you use locally to the volume (e.g. `{volume}/.openclaw/clawtasks-credentials.json`) so Railway shows the same data as local. Optional env: **`RUN_AUTONOMOUS_CYCLE_MIN`** (minutes; default 20 on Railway).
+
+## Copy everything from local so Railway works 100% (use Railway token / Variables)
+
+1. **On your local machine** (where `~/.openclaw/` has your ClawTasks credentials), run:
+   ```bash
+   ./sentinel-nexus/export-credentials-for-railway.sh
+   ```
+   This prints variable names and **base64** values.
+
+2. **In Railway** → your project → **Variables**: Add each line the script printed (e.g. `CLAWTASKS_CREDENTIALS_JSON=eyJ...`, and optionally `CLAWTASKS_CREDENTIALS_JOBMASTER2_JSON`, `CLAWTASKS_CREDENTIALS_JOBMASTER3_JSON`). Or add the single **`RAILWAY_CLAWTASKS_CREDENTIALS`** line (base64 of all credentials in one object).
+
+3. **Redeploy.** On startup the server writes those credentials into the volume (under `.openclaw/`) if the files don't already exist. After that, dashboard, Completed work, run-cycle, and all APIs use the same data as local — 100%.
+
+4. **Volume:** Ensure a volume is attached (Railway injects **`RAILWAY_VOLUME_MOUNT_PATH`**). The app uses it automatically; no need to set `OPENCLAW_STATE_DIR` or `OPENCLAW_WORKSPACE_DIR` unless you override.
 
 ## After deploy
 

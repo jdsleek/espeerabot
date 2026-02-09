@@ -24,6 +24,7 @@
     .muted { color: var(--muted); }
     .source-tag { font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 4px; background: var(--bg); color: var(--muted); }
     .empty { color: var(--muted); font-style: italic; }
+    #setup-hint code { background: var(--card); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
   </style>
 </head>
 <body>
@@ -56,6 +57,11 @@
         <tbody id="tbody"></tbody>
       </table>
       <p id="empty" class="empty" style="display:none;">No completed work yet. Run cycles and approve submissions to see them here.</p>
+      <div id="setup-hint" class="card" style="display:none; margin-top:1rem; background:var(--bg); border-color:var(--accent);">
+        <h2 style="font-size:0.75rem;">Setup: same data as local</h2>
+        <p class="muted" style="margin:0 0 0.5rem;">Completed work is loaded from ClawTasks using your agent credentials. On Railway, add the same credential files you use locally so this page shows the same data.</p>
+        <p class="muted" style="margin:0; font-size:0.85rem;">Put <code>clawtasks-credentials.json</code> (and optional jobmaster2, jobmaster3 files) in the volume under <code>.openclaw/</code>. Path: <code id="cred-path-hint"></code></p>
+      </div>
     </div>
     <p id="error" class="muted" style="display:none;"></p>
   </div>
@@ -83,6 +89,18 @@
         if (list.length === 0) {
           document.getElementById("content").style.display = "block";
           document.getElementById("empty").style.display = "block";
+          if (data.noCredentials) {
+            const setupHint = document.getElementById("setup-hint");
+            setupHint.style.display = "block";
+            const pathHint = document.getElementById("cred-path-hint");
+            if (data.railwayVolume) {
+              pathHint.textContent = data.railwayVolume + "/.openclaw/";
+            } else if (data.openclawPath) {
+              pathHint.textContent = data.openclawPath + "/";
+            } else {
+              pathHint.textContent = "(volume)/.openclaw/ or OPENCLAW_STATE_DIR";
+            }
+          }
           return;
         }
         document.getElementById("content").style.display = "block";
