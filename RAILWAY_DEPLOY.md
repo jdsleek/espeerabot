@@ -1,6 +1,18 @@
 # Deploy to Railway — Run Independently 24/7
 
-Deploy the Jobmaster Agency so it runs on Railway without your local machine. Agents claim, submit, and engage automatically.
+Deploy the Jobmaster Agency so it runs on **Railway** instead of your PC. Hub, Dashboard, and Landing work at **your Railway URL**; claim, submit, Moltbook, and Nexus Chapel run automatically **even when your PC is off**.
+
+---
+
+## Run everything on Railway (PC off)
+
+| Local (127.0.0.1:3880) | On Railway (same app) |
+|------------------------|------------------------|
+| http://127.0.0.1:3880/ | **https://\<your-app\>.up.railway.app/** |
+| http://127.0.0.1:3880/hub | **https://\<your-app\>.up.railway.app/hub** |
+| http://127.0.0.1:3880/admin/dashboard | **https://\<your-app\>.up.railway.app/admin/dashboard** |
+
+**One-time setup:** Connect repo → add Volume (`/data`) → add Variables (below) → add credentials from `export-credentials-for-railway.sh` → **Generate Domain** in Settings → Networking. After that, every push to `main` auto-deploys.
 
 ---
 
@@ -31,6 +43,19 @@ Deploy the Jobmaster Agency so it runs on Railway without your local machine. Ag
 | `RUN_NEXUS_CHAPEL_POST_MIN` | `720` | Optional (Nexus Chapel prayer/reflection every 12h; 0 = off) |
 
 ### D. Add Credentials
+
+**Option 1 — Use token (set variables via API, no copy-paste):**
+
+1. In Railway: Project → **Settings** → **Tokens** → **Create Token** (Project Token). Copy the token.
+2. Run locally (where you have `~/.openclaw/` and credentials):
+
+```bash
+RAILWAY_TOKEN=<your-project-token> ./sentinel-nexus/set-railway-variables.sh
+```
+
+The script pushes all required variables (paths, cycle intervals, and credentials from `~/.openclaw/`) to Railway. If you have multiple projects, set `RAILWAY_PROJECT_ID` and `RAILWAY_ENVIRONMENT_ID` (from Project → Settings and Environments).
+
+**Option 2 — Paste in dashboard:**
 
 Run locally (where you have `~/.openclaw/`):
 
@@ -102,3 +127,16 @@ git push origin main
 ```
 
 Railway auto-deploys on push. Check logs for `Autonomous cycle every 20 min (Railway).`
+
+---
+
+## 6. Checklist: “All on Railway, PC off”
+
+- [ ] Railway project created and **jdsleek/espeerabot** (or your fork) connected, branch **main**.
+- [ ] **Volume** added, mount path **`/data`**.
+- [ ] **Variables** set: `OPENCLAW_WORKSPACE_DIR=/data/workspace`, `OPENCLAW_STATE_DIR=/data/.openclaw`, and optionally `RUN_AUTONOMOUS_CYCLE_MIN=20`, `RUN_MOLTBOOK_ENGAGE_MIN=20`, `RUN_NEXUS_CHAPEL_POST_MIN=720`.
+- [ ] **Credentials** added (run `./sentinel-nexus/export-credentials-for-railway.sh` and paste each line into Railway Variables): ClawTasks (lead + jobmaster2/3), Moltbook (Sentinel_Nexus), and Nexus Chapel if you use it.
+- [ ] **Public domain** generated: Project → **Settings** → **Networking** → **Generate Domain** (e.g. `espeerabot.up.railway.app`).
+- [ ] Redeploy once (or push to `main`) so the server writes credentials to the volume and starts the cycle.
+
+When all are done, open **https://\<your-domain\>/hub** — same Hub, Dashboard, and Landing as local, but they run 24/7 on Railway. You can stop running `run-agency-24-7.sh` on your PC.
