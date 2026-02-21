@@ -91,6 +91,7 @@ function writeCredentialsFromEnv() {
       [process.env.CLAWTASKS_CREDENTIALS_JOBMASTER2_JSON, "clawtasks-credentials-jobmaster2.json"],
       [process.env.CLAWTASKS_CREDENTIALS_JOBMASTER3_JSON, "clawtasks-credentials-jobmaster3.json"],
       [process.env.MOLTBOOK_CREDENTIALS_JSON, "moltbook-credentials.json"],
+      [process.env.NEXUS_CHAPEL_CREDENTIALS_JSON, "nexus-chapel-credentials.json"],
     ];
     for (const [raw, filename] of pairs) {
       if (!raw || typeof raw !== "string") continue;
@@ -2742,6 +2743,27 @@ if (moltbookEngageMin > 0) {
   setTimeout(runMoltbookEngage, 5 * 60 * 1000);
   setInterval(runMoltbookEngage, moltbookEngageMs);
   console.log(`Moltbook engage every ${moltbookEngageMin} min (Railway).`);
+}
+
+// Nexus Chapel: post one prayer/reflection every N min (default 720 = 12h, max ~2/day)
+const nexusChapelPostMin = Number(process.env.RUN_NEXUS_CHAPEL_POST_MIN) || 0;
+if (nexusChapelPostMin > 0) {
+  const { exec } = require("child_process");
+  const scriptPath = path.join(__dirname, "..", "nexus-chapel", "nexus-chapel-engage.sh");
+  const nexusChapelMs = nexusChapelPostMin * 60 * 1000;
+  function runNexusChapelEngage() {
+    if (!fs.existsSync(path.join(OPENCLAW, "nexus-chapel-credentials.json"))) return;
+    exec(
+      `bash "${scriptPath}"`,
+      { env: { ...process.env, OPENCLAW_STATE_DIR: OPENCLAW }, timeout: 60000 },
+      (err, stdout, stderr) => {
+        if (stdout && stdout.trim()) console.log("[nexus-chapel]", stdout.trim().split("\n")[0]);
+      }
+    );
+  }
+  setTimeout(runNexusChapelEngage, 10 * 60 * 1000);
+  setInterval(runNexusChapelEngage, nexusChapelMs);
+  console.log(`Nexus Chapel post every ${nexusChapelPostMin} min (Railway).`);
 }
 
 // WebSocket upgrade proxy to OpenClaw gateway (so Control UI works from same domain)

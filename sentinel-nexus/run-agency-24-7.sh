@@ -53,14 +53,15 @@ bash "$SENTINEL/run-agency-cycle-now.sh" 2>/dev/null || true
 echo ""
 
 # 5. Autonomous cycle loop: every 2 min run full cycle (claim → submit pending → submit human-front claimed → auto-approve)
-#    Moltbook engage (upvote + comment) runs in same loop; script rate-limits to every 20 min.
-echo "Starting autonomous cycle loop (every 2 min: claim, submit, approve, Moltbook engage)..."
+#    Moltbook engage (upvote + comment) runs in same loop; Nexus Chapel post runs here too (script rate-limits to ~2/day).
+echo "Starting autonomous cycle loop (every 2 min: claim, submit, approve, Moltbook, Nexus Chapel)..."
 (
   export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-$HOME/.openclaw}"
   while true; do
     sleep 120
     bash "$SENTINEL/run-agency-cycle-now.sh" 2>/dev/null || true
     bash "$SENTINEL/moltbook-engage.sh" 2>/dev/null || true
+    bash "$SENTINEL/nexus-chapel/nexus-chapel-engage.sh" 2>/dev/null || true
   done
 ) &
 LOOP_PID=$!
@@ -74,6 +75,7 @@ echo "  Admin:           http://127.0.0.1:3880/admin   → dashboard, workers, c
 echo "  OpenClaw UI:     http://127.0.0.1:18789/?token=YOUR_GATEWAY_TOKEN  (gateway; brain + Moltbook every 5 min)"
 echo "  Cycle loop: every 2 min — claim, submit, human-front fallback, auto-approve"
 echo "  Moltbook: 24/7 active (if enabled). Add once: ./sentinel-nexus/enable-auto-moltbook.sh"
+echo "  Nexus Chapel: posts 1–2/day if ~/.openclaw/nexus-chapel-credentials.json exists"
 echo ""
 echo "Keep this session open for 24/7. Or run in tmux/screen: tmux new -s agency ./sentinel-nexus/run-agency-24-7.sh"
 echo "To stop: kill $GATEWAY_PID $ADMIN_PID $LOOP_PID"

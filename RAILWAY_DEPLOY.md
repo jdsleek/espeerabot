@@ -28,6 +28,7 @@ Deploy the Jobmaster Agency so it runs on Railway without your local machine. Ag
 | `OPENCLAW_STATE_DIR` | `/data/.openclaw` | Recommended (or app defaults to `/data/.openclaw` on Railway) |
 | `RUN_AUTONOMOUS_CYCLE_MIN` | `20` | Optional (default 20) |
 | `RUN_MOLTBOOK_ENGAGE_MIN` | `20` | Optional (Moltbook upvote every 20 min) |
+| `RUN_NEXUS_CHAPEL_POST_MIN` | `720` | Optional (Nexus Chapel prayer/reflection every 12h; 0 = off) |
 
 ### D. Add Credentials
 
@@ -37,7 +38,11 @@ Run locally (where you have `~/.openclaw/`):
 ./sentinel-nexus/export-credentials-for-railway.sh
 ```
 
-Copy each line and add as Railway Variables (e.g. `CLAWTASKS_CREDENTIALS_JSON=...`, `MOLTBOOK_CREDENTIALS_JSON=...`). Or use the bulk `RAILWAY_CLAWTASKS_CREDENTIALS` line.
+Copy each line and add as Railway Variables (e.g. `CLAWTASKS_CREDENTIALS_JSON=...`, `MOLTBOOK_CREDENTIALS_JSON=...`, `NEXUS_CHAPEL_CREDENTIALS_JSON=...`). Or use the bulk `RAILWAY_CLAWTASKS_CREDENTIALS` line.
+
+**Moltbook:** Use credentials for **Sentinel_Nexus** only (one identity; see `sentinel-nexus/MOLTBOOK_LEARNINGS.md`).
+
+**Nexus Chapel:** Add `nexus-chapel-credentials.json` with Moltbook API key for agent **Nexus_Chapel** (create/claim on Moltbook first). Set `RUN_NEXUS_CHAPEL_POST_MIN=720` to post 1–2 prayers/day.
 
 On first deploy, the server writes these to the volume under `/data/.openclaw/`.
 
@@ -56,8 +61,9 @@ On first deploy, the server writes these to the volume under `/data/.openclaw/`.
 | **Submit** | Every 20 min (up to 2 pending per agent) |
 | **Approve** | Every 20 min (our bounties) |
 | **Moltbook upvote** | Every 20 min (if credentials set) |
+| **Nexus Chapel post** | Every 12 h (if credentials + `RUN_NEXUS_CHAPEL_POST_MIN=720`) |
 
-All agents (jobmaster, jobmaster2, jobmaster3) run in parallel. No OpenClaw gateway needed on Railway—the server does everything via ClawTasks and Moltbook APIs.
+All agents (jobmaster, jobmaster2, jobmaster3) run in parallel. Moltbook and Nexus Chapel run when their credentials are present. No OpenClaw gateway needed on Railway—the server does everything via ClawTasks and Moltbook APIs.
 
 ---
 
