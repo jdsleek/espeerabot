@@ -2,6 +2,15 @@
 
 A **pastor agent** for Moltbook with a clear niche: **prayer, reflection, and community**. Built to take over the "spiritual space" on the feed, grow followers naturally, and run like a church: one lead pastor (the agent), members, and pastors-in-training (shepherds).
 
+## Quick setup (3 steps)
+
+1. **Create the agent on Moltbook** — Log in at [moltbook.com](https://www.moltbook.com) (e.g. as whalemind). Create a new agent with username **Nexus_Chapel**, claim it, and copy the API key. (Or register via API: `POST https://www.moltbook.com/api/v1/agents/register` with `{"name":"Nexus_Chapel","description":"Pastor of Nexus Chapel. Prayer, reflection, community."}` then complete the claim URL.)
+2. **Store credentials locally:**  
+   `echo '{"api_key":"YOUR_KEY","agent_name":"Nexus_Chapel"}' > ~/.openclaw/nexus-chapel-credentials.json`
+3. **Run:** Local 24/7 loop already calls `nexus-chapel/nexus-chapel-engage.sh` (1 post per 12 h). Or run once: `./sentinel-nexus/nexus-chapel/nexus-chapel-engage.sh`
+
+Optional: create submolt **m/nexus_chapel** on Moltbook and set `NEXUS_CHAPEL_SUBMOLT=nexus_chapel` so posts go there.
+
 ## Why "Nexus Chapel"
 
 - **Nexus** = connection (fits the agent ecosystem).
@@ -24,9 +33,28 @@ A **pastor agent** for Moltbook with a clear niche: **prayer, reflection, and co
 | **GROWTH_AND_STRUCTURE.md** | How to run it like a church: members, pastors, natural growth, one-page pastor brief. |
 | **README.md** | This file. |
 
+## How to claim Nexus_Chapel on Moltbook
+
+**“Claim”** = link the agent to your human account so it shows as owned (`is_claimed: true`) and you can use the dashboard and API key.
+
+1. **Go to [moltbook.com](https://www.moltbook.com)** and sign in (or create an account).
+2. **Create or adopt the agent:**
+   - If there’s a “Create agent” or “Add bot” flow, create an agent with username **Nexus_Chapel** (3–30 chars: letters, numbers, underscores, hyphens).
+   - If the agent already exists (e.g. created by an API or another flow), you need to **claim** it so you own it.
+3. **Get the API key** — Moltbook shows it when you create the agent or in the agent’s dashboard/settings. Copy and store it; you’ll put it in `nexus-chapel-credentials.json`.
+4. **If the agent already exists but isn’t yours:** use **[Recover your account](https://www.moltbook.com/help/lost-api-key)** to connect your email and username, then prove ownership with the X (Twitter) account that should own the bot. That flow links the bot to you (claim/recovery).
+5. **Check status:** once you have the key in `~/.openclaw/nexus-chapel-credentials.json`, run:
+   ```bash
+   CRED="${OPENCLAW_STATE_DIR:-$HOME/.openclaw}/nexus-chapel-credentials.json" \
+   bash -c 'KEY=$(jq -r .api_key "$CRED"); curl -s https://www.moltbook.com/api/v1/agents/me -H "Authorization: Bearer $KEY" | jq "{ name: .agent.name, is_claimed: .agent.is_claimed, karma: .agent.karma }"'
+   ```
+   You want `is_claimed: true`.
+
+---
+
 ## How to Launch Nexus Chapel on Moltbook
 
-1. **Create a Moltbook agent** (e.g. name: **Nexus_Chapel**). Claim it, get the API key.
+1. **Create a Moltbook agent** (e.g. name: **Nexus_Chapel**). Claim it (steps above), get the API key.
 2. **Store credentials** in `~/.openclaw/nexus-chapel-credentials.json` (same shape as moltbook-credentials: `{"api_key":"...","agent_name":"Nexus_Chapel"}`). Don't commit this file.
 3. **Create the submolt** on Moltbook (e.g. m/nexus_chapel). Pin a welcome + "how to pray" (from content-templates). Optional: set `NEXUS_CHAPEL_SUBMOLT=nexus_chapel` so the script posts there instead of m/general.
 4. **Run the engage script** — it's already wired:

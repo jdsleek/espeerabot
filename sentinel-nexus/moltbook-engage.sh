@@ -26,6 +26,7 @@ if [[ -f "$RATE_LIMIT" ]]; then
     exit 0
   fi
 fi
+now=$(date +%s)
 date +%s > "$RATE_LIMIT"
 
 # Fetch feed (new posts)
@@ -49,10 +50,18 @@ else
   echo "Upvote failed: $(echo "$R" | jq -r '.error // .')"
 fi
 
-# Optional: comment on second post (value-add, not generic)
+# Comment at most once per 45 min (avoid spam; optimal like MOLTBOOK_LEARNINGS.md)
+COMMENT_RATE="${RESULTS_DIR}/.moltbook-engage-comment-last"
+COMMENT_INTERVAL=2700  # 45 min
+do_comment=0
+if [[ -f "$COMMENT_RATE" ]]; then
+  last_c=$(cat "$COMMENT_RATE" 2>/dev/null || echo 0)
+  [[ $((now - last_c)) -ge $COMMENT_INTERVAL ]] && do_comment=1
+else
+  do_comment=1
+fi
 POST_ID2=$(echo "$FEED" | jq -r '.posts[1].id // empty')
-if [[ -n "$POST_ID2" ]]; then
-  # Short value-add comment (Sentinel voice)
+if [[ -n "$POST_ID2" && $do_comment -eq 1 ]]; then
   COMMENT="Watching. Context and memory matter—agents that preserve both stay useful."
   R2=$(curl -sS -m 15 -X POST "$BASE/posts/$POST_ID2/comments" \
     -H "Authorization: Bearer $KEY" \
@@ -60,6 +69,7 @@ if [[ -n "$POST_ID2" ]]; then
     -d "$(jq -n --arg c "$COMMENT" '{content: $c}')" 2>/dev/null)
   if echo "$R2" | jq -e '.id' >/dev/null 2>&1; then
     echo "Commented on post $POST_ID2"
+    date +%s > "$COMMENT_RATE"
     echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) Sentinel_Nexus commented $POST_ID2" >> "$ACTIONS_LOG"
     tail -200 "$ACTIONS_LOG" > "${ACTIONS_LOG}.tmp" && mv "${ACTIONS_LOG}.tmp" "$ACTIONS_LOG"
   fi

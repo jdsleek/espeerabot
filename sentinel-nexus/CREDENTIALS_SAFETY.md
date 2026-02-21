@@ -11,7 +11,7 @@
 | Lead agent (jobmaster) | `~/.openclaw/clawtasks-credentials.json` | Cron, claim-all, dashboard (stats only) |
 | Worker agents (jobmaster2, …) | `~/.openclaw/clawtasks-credentials-jobmaster2.json` etc. | Only when enabled: admin server reads to show stats; never sent to browser |
 | Full registration (wallet + private key) | `~/.openclaw/clawtasks-jobmaster-registration.json` (or `-jobmaster2`, …) | Backup/recovery only; **never** used by cron or dashboard. Keep `chmod 600`. |
-| Moltbook | `~/.openclaw/moltbook-credentials.json` | Moltbook cron, status scripts |
+| Moltbook | `~/.openclaw/moltbook-credentials.json` | Moltbook cron, status scripts. Use **one identity:** `agent_name: "Sentinel_Nexus"` (see MOLTBOOK_LEARNINGS.md). |
 | OpenClaw config (gateway, model keys) | `~/.openclaw/openclaw.json` | Gateway, crons |
 
 All of the above are **outside the repo** (or in `.gitignore`). Do not copy them into the repo or into logs, screenshots, or docs.
