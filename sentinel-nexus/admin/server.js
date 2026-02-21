@@ -15,11 +15,15 @@ const tls = require("tls");
 
 // Railway sets PORT; locally use ADMIN_PORT or 3880
 const PORT = Number(process.env.PORT || process.env.ADMIN_PORT) || 3880;
+const IS_RAILWAY = Boolean(process.env.PORT);
 // Use existing Railway volume when present (Railway injects RAILWAY_VOLUME_MOUNT_PATH)
 const RAILWAY_VOLUME = (process.env.RAILWAY_VOLUME_MOUNT_PATH || "").trim();
+// On Railway: prefer explicit env, then volume path, then /data (standard mount for espeerabot)
 const OPENCLAW =
   process.env.OPENCLAW_STATE_DIR ||
-  (RAILWAY_VOLUME ? path.join(RAILWAY_VOLUME, ".openclaw") : path.join(process.env.HOME || process.env.USERPROFILE || "", ".openclaw"));
+  (RAILWAY_VOLUME ? path.join(RAILWAY_VOLUME, ".openclaw") : null) ||
+  (IS_RAILWAY ? "/data/.openclaw" : null) ||
+  path.join(process.env.HOME || process.env.USERPROFILE || "", ".openclaw");
 const SENTINEL_DIR = path.join(__dirname, "..");
 // When set, proxy /setup and /openclaw to this URL (other Railway project) so one domain serves both agency and OpenClaw
 const OPENCLAW_GATEWAY_URL = (process.env.OPENCLAW_GATEWAY_URL || "").trim().replace(/\/$/, "");
@@ -43,6 +47,7 @@ function readText(filePath) {
 function getWorkspaceDir() {
   if (process.env.OPENCLAW_WORKSPACE_DIR) return process.env.OPENCLAW_WORKSPACE_DIR;
   if (RAILWAY_VOLUME) return path.join(RAILWAY_VOLUME, "workspace");
+  if (IS_RAILWAY) return "/data/workspace";
   const configPath = path.join(OPENCLAW, "openclaw.json");
   const cfg = readJson(configPath);
   return (cfg && cfg.agents && cfg.agents.defaults && cfg.agents.defaults.workspace) || path.join(OPENCLAW, "workspace");
@@ -68,12 +73,13 @@ function appendCycleAction(agent, action, detail) {
   } catch (_) {}
 }
 
-// Ensure workspace dirs exist (e.g. on Railway first deploy with OPENCLAW_WORKSPACE_DIR)
+// Ensure workspace and state dirs exist (Railway: /data/workspace, /data/.openclaw)
 try {
   const ws = getWorkspaceDir();
   if (!fs.existsSync(ws)) fs.mkdirSync(ws, { recursive: true });
   const cronResults = path.join(ws, "cron-results");
   if (!fs.existsSync(cronResults)) fs.mkdirSync(cronResults, { recursive: true });
+  if (!fs.existsSync(OPENCLAW)) fs.mkdirSync(OPENCLAW, { recursive: true });
 } catch (_) {}
 
 // Railway: copy credentials from env to volume on startup so everything works 100% (use Railway Variables)
@@ -1741,6 +1747,13 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: String(e.message || e) }));
       });
     });
+    return;
+  }
+
+  // Health check for Railway / load balancers
+  if (url === "/health" || url === "/health/") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true, service: "espeerabot", ts: new Date().toISOString() }));
     return;
   }
 

@@ -9,8 +9,8 @@ Deploy the Jobmaster Agency so it runs on Railway without your local machine. Ag
 ### A. Connect Repo to Railway
 
 1. Go to [railway.app](https://railway.app) → New Project → Deploy from GitHub.
-2. Connect this repo (e.g. `jdsleek/espeerabot` or your fork), branch `main`.
-3. Railway will use `railway.json` → start command: `node sentinel-nexus/admin/server.js`.
+2. Connect **jdsleek/espeerabot** (or your fork), branch **main**.
+3. Railway uses `railway.json` and `nixpacks.toml` → start: `node sentinel-nexus/admin/server.js`. Health check: **`/health`** (returns 200).
 
 ### B. Add Volume
 
@@ -24,8 +24,8 @@ Deploy the Jobmaster Agency so it runs on Railway without your local machine. Ag
 
 | Variable | Value | Required |
 |----------|-------|----------|
-| `OPENCLAW_WORKSPACE_DIR` | `/data/workspace` | Yes (with volume) |
-| `OPENCLAW_STATE_DIR` | `/data/.openclaw` | Yes (with volume) |
+| `OPENCLAW_WORKSPACE_DIR` | `/data/workspace` | Recommended (or app defaults to `/data` when PORT is set) |
+| `OPENCLAW_STATE_DIR` | `/data/.openclaw` | Recommended (or app defaults to `/data/.openclaw` on Railway) |
 | `RUN_AUTONOMOUS_CYCLE_MIN` | `20` | Optional (default 20) |
 | `RUN_MOLTBOOK_ENGAGE_MIN` | `20` | Optional (Moltbook upvote every 20 min) |
 

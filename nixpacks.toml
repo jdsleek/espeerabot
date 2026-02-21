@@ -1,0 +1,9 @@
+# Railway / Nixpacks build for espeerabot (Jobmaster Agency)
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["npm install --omit=dev"]
+
+[start]
+cmd = "node sentinel-nexus/admin/server.js"
