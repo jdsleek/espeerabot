@@ -13,12 +13,13 @@ fi
 echo "# --- Paste these into Railway → Variables, then redeploy ---"
 echo ""
 
-for f in clawtasks-credentials.json clawtasks-credentials-jobmaster2.json clawtasks-credentials-jobmaster3.json; do
+for f in clawtasks-credentials.json clawtasks-credentials-jobmaster2.json clawtasks-credentials-jobmaster3.json moltbook-credentials.json; do
   path="$OPENCLAW/$f"
   if [[ -f "$path" ]]; then
     name="CLAWTASKS_CREDENTIALS_JSON"
     [[ "$f" == *"jobmaster2"* ]] && name="CLAWTASKS_CREDENTIALS_JOBMASTER2_JSON"
     [[ "$f" == *"jobmaster3"* ]] && name="CLAWTASKS_CREDENTIALS_JOBMASTER3_JSON"
+    [[ "$f" == *"moltbook"* ]] && name="MOLTBOOK_CREDENTIALS_JSON"
     b64=$(base64 < "$path" | tr -d '\n')
     echo "${name}=${b64}"
   fi
@@ -27,7 +28,7 @@ done
 # Optional: one bulk variable (base64 of {"filename": "<json string>", ...})
 if command -v jq >/dev/null 2>&1; then
   BULK=""
-  for f in clawtasks-credentials.json clawtasks-credentials-jobmaster2.json clawtasks-credentials-jobmaster3.json; do
+  for f in clawtasks-credentials.json clawtasks-credentials-jobmaster2.json clawtasks-credentials-jobmaster3.json moltbook-credentials.json; do
     path="$OPENCLAW/$f"
     if [[ -f "$path" ]]; then
       json=$(jq -c . "$path" 2>/dev/null || cat "$path")

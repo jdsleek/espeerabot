@@ -10,6 +10,8 @@ const fs = require("fs");
 const path = require("path");
 const https = require("https");
 const crypto = require("crypto");
+const net = require("net");
+const tls = require("tls");
 
 // Railway sets PORT; locally use ADMIN_PORT or 3880
 const PORT = Number(process.env.PORT || process.env.ADMIN_PORT) || 3880;
@@ -19,6 +21,8 @@ const OPENCLAW =
   process.env.OPENCLAW_STATE_DIR ||
   (RAILWAY_VOLUME ? path.join(RAILWAY_VOLUME, ".openclaw") : path.join(process.env.HOME || process.env.USERPROFILE || "", ".openclaw"));
 const SENTINEL_DIR = path.join(__dirname, "..");
+// When set, proxy /setup and /openclaw to this URL (other Railway project) so one domain serves both agency and OpenClaw
+const OPENCLAW_GATEWAY_URL = (process.env.OPENCLAW_GATEWAY_URL || "").trim().replace(/\/$/, "");
 
 function readJson(filePath) {
   try {
@@ -52,6 +56,17 @@ const DISCOVERY_FEED_FILE = path.join(getWorkspaceDir(), "cron-results", "discov
 const PLATFORM_BRIEFS_FILE = path.join(getWorkspaceDir(), "cron-results", "platform-briefs.json");
 const MOLTBOOK_LATEST_FILE = path.join(getWorkspaceDir(), "cron-results", "moltbook-latest.txt");
 const MOLTX_STATE_FILE = path.join(getWorkspaceDir(), "cron-results", "moltx-state.json");
+const CYCLE_ACTIONS_LOG = path.join(getWorkspaceDir(), "cron-results", "cycle-actions.log");
+
+function appendCycleAction(agent, action, detail) {
+  try {
+    const line = new Date().toISOString().slice(0, 19) + "Z " + (agent || "agent") + " " + action + " " + (detail || "") + "\n";
+    fs.appendFileSync(CYCLE_ACTIONS_LOG, line);
+    const content = fs.readFileSync(CYCLE_ACTIONS_LOG, "utf8");
+    const lines = content.trim().split("\n");
+    if (lines.length > 200) fs.writeFileSync(CYCLE_ACTIONS_LOG, lines.slice(-200).join("\n") + "\n", "utf8");
+  } catch (_) {}
+}
 
 // Ensure workspace dirs exist (e.g. on Railway first deploy with OPENCLAW_WORKSPACE_DIR)
 try {
@@ -69,6 +84,7 @@ function writeCredentialsFromEnv() {
       [process.env.CLAWTASKS_CREDENTIALS_JSON, "clawtasks-credentials.json"],
       [process.env.CLAWTASKS_CREDENTIALS_JOBMASTER2_JSON, "clawtasks-credentials-jobmaster2.json"],
       [process.env.CLAWTASKS_CREDENTIALS_JOBMASTER3_JSON, "clawtasks-credentials-jobmaster3.json"],
+      [process.env.MOLTBOOK_CREDENTIALS_JSON, "moltbook-credentials.json"],
     ];
     for (const [raw, filename] of pairs) {
       if (!raw || typeof raw !== "string") continue;
@@ -744,6 +760,34 @@ async function getAgencyData() {
     cronResults.clawtasks && { type: "clawtasks", at: new Date().toISOString(), text: cronResults.clawtasks.trim().slice(0, 200) },
   ].filter(Boolean);
 
+  // Live activity feed: cycle-actions.log + parsed cron results
+  const actionsLogPath = path.join(resultsDir, "cycle-actions.log");
+  let recentActions = [];
+  try {
+    const logText = fs.readFileSync(actionsLogPath, "utf8");
+    const lines = logText.trim().split("\n").filter(Boolean).slice(-30);
+    for (const line of lines) {
+      const m = line.match(/^(\S+)\s+(\S+)\s+(\S+)\s+(.+)$/);
+      if (m) {
+        recentActions.push({ at: m[1], agent: m[2], action: m[3], detail: m[4] });
+      }
+    }
+  } catch {}
+  // Prepend cron summaries as actions
+  try {
+    if (cronResults.clawtasks) {
+      const cp = path.join(resultsDir, "clawtasks-latest.txt");
+      const ts = fs.existsSync(cp) ? (fs.statSync(cp).mtime || new Date()).toISOString() : new Date().toISOString();
+      recentActions.unshift({ at: ts.slice(0, 19), agent: "brain", action: "clawtasks", detail: cronResults.clawtasks.trim().slice(0, 120) });
+    }
+    if (cronResults.moltbook) {
+      const mp = path.join(resultsDir, "moltbook-latest.txt");
+      const ts = fs.existsSync(mp) ? (fs.statSync(mp).mtime || new Date()).toISOString() : new Date().toISOString();
+      recentActions.unshift({ at: ts.slice(0, 19), agent: "Sentinel_Nexus", action: "moltbook", detail: cronResults.moltbook.trim().slice(0, 120) });
+    }
+  } catch {}
+  recentActions = recentActions.slice(0, 20);
+
   // Open bounties hierarchy (all claimable jobs, sorted by critical stats)
   const ourNames = new Set(agentsConfig.map((a) => (a.name || a.id).toLowerCase()));
   let openBountiesHierarchy = [];
@@ -798,6 +842,7 @@ async function getAgencyData() {
     cronResults,
     cronJobs,
     activity,
+    recentActions,
     openBountiesHierarchy,
     openBountiesFetchedAt: new Date().toISOString(),
     humanFrontJobs,
@@ -934,8 +979,41 @@ function serveFile(filePath, contentType, res) {
   });
 }
 
+// Proxy request to OpenClaw gateway (other Railway project) so same domain serves both
+function proxyToOpenClawGateway(req, res) {
+  if (!OPENCLAW_GATEWAY_URL) return false;
+  const url = (req.url || "/").split("?")[0];
+  if (url !== "/setup" && !url.startsWith("/setup/") && url !== "/openclaw" && !url.startsWith("/openclaw")) return false;
+  const target = new URL(req.url || "/", OPENCLAW_GATEWAY_URL);
+  const headers = { ...req.headers };
+  delete headers.host;
+  headers.host = target.host;
+  const proxyReq = (target.protocol === "https:" ? https : http).request(
+    {
+      hostname: target.hostname,
+      port: target.port || (target.protocol === "https:" ? 443 : 80),
+      path: target.pathname + target.search,
+      method: req.method,
+      headers,
+    },
+    (proxyRes) => {
+      res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
+      proxyRes.pipe(res);
+    }
+  );
+  proxyReq.on("error", (e) => {
+    res.writeHead(502, { "Content-Type": "text/plain" });
+    res.end("Bad Gateway: " + (e.message || "OpenClaw gateway unreachable"));
+  });
+  req.pipe(proxyReq);
+  return true;
+}
+
 const server = http.createServer((req, res) => {
   const url = (req.url || "/").split("?")[0];
+
+  // Proxy /setup and /openclaw to other Railway project when OPENCLAW_GATEWAY_URL is set
+  if (proxyToOpenClawGateway(req, res)) return;
 
   // Favicon: avoid 404 in console (browser requests it automatically)
   if (url === "/favicon.ico" || url === "/favicon.ico/") {
@@ -1053,17 +1131,18 @@ const server = http.createServer((req, res) => {
         const creds = readJson(credPath);
         const apiKey = creds && creds.api_key;
         if (!apiKey) continue;
+        const agentName = agent.name || agent.id || "agent";
         const openRes = await fetchClawTasks(apiKey, "/bounties?status=open");
-        const list = (openRes && openRes.bounties) ? openRes.bounties : [];
+        const list = openRes && !openRes.error && openRes.bounties ? openRes.bounties : [];
         const toClaim = list
           .filter((b) => (b.mode || "instant") === "instant" && !ourNames.has((b.poster_name || "").toLowerCase()))
           .slice(0, 10);
         for (const b of toClaim) {
           const result = await fetchClawTasksPost(apiKey, "/bounties/" + b.id + "/claim", {});
-          if (!result.error) totalClaimed++;
+          if (!result.error) { totalClaimed++; appendCycleAction(agentName, "claimed", b.id); }
         }
         const pending = await fetchClawTasks(apiKey, "/agents/me/pending");
-        let bounties = (pending && pending.bounties) ? pending.bounties : [];
+        let bounties = pending && !pending.error && pending.bounties ? pending.bounties : [];
         const humanFrontIds = getHumanFrontBountyIds();
         bounties = bounties.sort((a, b) => (humanFrontIds.has(b.id) ? 1 : 0) - (humanFrontIds.has(a.id) ? 1 : 0));
         const me = await fetchClawTasks(apiKey, "/agents/me");
@@ -1072,7 +1151,7 @@ const server = http.createServer((req, res) => {
           const b = bounties[i];
           const content = buildReportDeliverable(b.title || "Task", wallet);
           const result = await fetchClawTasksPost(apiKey, "/bounties/" + b.id + "/submit", { content });
-          if (!result.error) totalSubmitted++;
+          if (!result.error) { totalSubmitted++; appendCycleAction(agentName, "submitted", b.id); }
         }
       }
       // Human-front: submit any claimed bounties not in pending (same as submit-human-front-claimed.sh)
@@ -2620,6 +2699,68 @@ if (autonomousCycleMin > 0) {
   setTimeout(triggerCycle, 2 * 60 * 1000);
   setInterval(triggerCycle, cycleMs);
   console.log(`Autonomous cycle every ${autonomousCycleMin} min (Railway).`);
+}
+
+// Moltbook engage on Railway: upvote 1 post every 20 min (rate-limited)
+const moltbookEngageMin = Number(process.env.RUN_MOLTBOOK_ENGAGE_MIN) || (process.env.PORT ? 20 : 0);
+if (moltbookEngageMin > 0) {
+  const MOLTBOOK_ENGAGE_LAST = path.join(getWorkspaceDir(), "cron-results", ".moltbook-engage-last");
+  const moltbookEngageMs = moltbookEngageMin * 60 * 1000;
+  async function runMoltbookEngage() {
+    try {
+      if (fs.existsSync(MOLTBOOK_ENGAGE_LAST)) {
+        const last = parseInt(fs.readFileSync(MOLTBOOK_ENGAGE_LAST, "utf8"), 10);
+        if (Date.now() - last < moltbookEngageMs) return;
+      }
+      const creds = readJson(path.join(OPENCLAW, "moltbook-credentials.json"));
+      const key = creds && creds.api_key;
+      if (!key) return;
+      const feed = await httpsGet("https://www.moltbook.com/api/v1/posts?sort=new&limit=10", { Authorization: `Bearer ${key}` });
+      const postId = feed && feed.posts && feed.posts[0] && feed.posts[0].id;
+      if (!postId) return;
+      const up = await httpsPostJson("https://www.moltbook.com/api/v1/posts/" + postId + "/upvote", {}, { Authorization: `Bearer ${key}` });
+      if (up && !up.error) {
+        fs.writeFileSync(MOLTBOOK_ENGAGE_LAST, String(Date.now()), "utf8");
+        appendCycleAction("Sentinel_Nexus", "upvoted", postId);
+        console.log("[autonomous] moltbook upvoted:", postId);
+      }
+    } catch (_) {}
+  }
+  setTimeout(runMoltbookEngage, 5 * 60 * 1000);
+  setInterval(runMoltbookEngage, moltbookEngageMs);
+  console.log(`Moltbook engage every ${moltbookEngageMin} min (Railway).`);
+}
+
+// WebSocket upgrade proxy to OpenClaw gateway (so Control UI works from same domain)
+if (OPENCLAW_GATEWAY_URL) {
+  server.on("upgrade", (req, clientSocket, head) => {
+    const url = (req.url || "/").split("?")[0];
+    if (url !== "/openclaw" && !url.startsWith("/openclaw/")) return;
+    const target = new URL(req.url || "/", OPENCLAW_GATEWAY_URL);
+    const isHttps = target.protocol === "https:";
+    const port = target.port || (isHttps ? 443 : 80);
+    const requestLine = `${req.method} ${target.pathname}${target.search} HTTP/1.1`;
+    const headers = ["Host: " + target.host, "Upgrade: " + (req.headers.upgrade || "websocket"), "Connection: Upgrade"];
+    ["sec-websocket-key", "sec-websocket-version", "sec-websocket-extensions", "origin"].forEach((k) => {
+      if (req.headers[k]) headers.push(k + ": " + req.headers[k]);
+    });
+    const proxyReq = requestLine + "\r\n" + headers.join("\r\n") + "\r\n\r\n";
+    const onConnect = (remote) => {
+      remote.write(proxyReq);
+      if (head && head.length) remote.write(head);
+      clientSocket.pipe(remote);
+      remote.pipe(clientSocket);
+    };
+    if (isHttps) {
+      const remote = tls.connect(port, target.hostname, { servername: target.hostname }, () => onConnect(remote));
+      remote.on("error", () => { try { clientSocket.destroy(); } catch (_) {} });
+    } else {
+      const remote = net.connect(port, target.hostname, () => onConnect(remote));
+      remote.on("error", () => { try { clientSocket.destroy(); } catch (_) {} });
+    }
+    clientSocket.on("error", () => {});
+  });
+  console.log("  OpenClaw proxy: /setup and /openclaw → " + OPENCLAW_GATEWAY_URL);
 }
 
 const listenHost = process.env.PORT ? "0.0.0.0" : "127.0.0.1";

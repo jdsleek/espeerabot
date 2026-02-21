@@ -2,6 +2,8 @@
 
 This repo is set up so **espeerabot.up.railway.app** (or your Railway domain) shows the **Jobmaster Agency** (landing, dashboard, hub, brain), not the static memorial site.
 
+**Quick deploy:** See **RAILWAY_DEPLOY.md** for step-by-step "run independently 24/7" instructions.
+
 ## What runs on Railway
 
 - **Start command:** `node sentinel-nexus/admin/server.js` (set in `railway.json` and `package.json` "start").
@@ -18,6 +20,7 @@ This repo is set up so **espeerabot.up.railway.app** (or your Railway domain) sh
 | `RUN_AUTONOMOUS_CYCLE_MIN` | Optional | Minutes between auto run-cycles (claim/submit/approve). Default **20** on Railway when `PORT` is set. |
 | `ADMIN_PORT` | Optional | Only if you are **not** using Railway’s `PORT` (e.g. local override). Normally leave unset. |
 | `REPORT_MAX_TOKENS` | Optional | Max tokens for report generation (default 8192). |
+| `OPENCLAW_GATEWAY_URL` | Optional | If OpenClaw is on **another** Railway project, set to that URL (e.g. `https://other-project.up.railway.app`). Then `/setup` and `/openclaw` on this domain proxy there — one place for agency and OpenClaw. |
 | API keys (Kimi, etc.) | As needed | Any keys used by the server (e.g. report generation) must be set in Railway Variables; the server reads `process.env`. |
 
 ## Checklist

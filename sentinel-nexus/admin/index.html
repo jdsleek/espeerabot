@@ -105,6 +105,7 @@
       const agents = data.agents || [];
       const cronJobs = data.cronJobs || [];
       const activity = data.activity || [];
+      const recentActions = data.recentActions || [];
       const cronResults = data.cronResults || {};
       const jobs = data.openBountiesHierarchy || [];
       const humanFrontJobs = data.humanFrontJobs || [];
@@ -131,6 +132,16 @@
           <span class="meta" style="margin-left:0.5rem;">Earned</span>
           <span class="meta">Agents: ${agents.length} · Pending: ${totalClaimed} · Instant: ${instantCount} · Proposal: ${proposalCount}</span>
           <span class="meta">Updated ${openFetchedAt}</span>
+        </div>
+        <div class="card full" style="margin-bottom:1rem;">
+          <h2>Live activity <span class="muted" style="font-weight:400; font-size:0.75rem;">(refresh every 15s)</span></h2>
+          <div class="activity-list" style="max-height:140px; font-size:0.85rem;">
+            ${recentActions.length ? recentActions.map((a) => `
+              <div class="activity-item">
+                <span class="type">${esc(a.at)}</span> <strong>${esc(a.agent)}</strong> ${esc(a.action)} ${esc(String(a.detail || "").slice(0, 60))}${(a.detail || "").length > 60 ? "…" : ""}
+              </div>
+            `).join("") : "<p class='muted'>No recent actions. Run cycle or wait for auto-runs.</p>"}
+          </div>
         </div>
         <div class="card full">
           <h2>Do this</h2>

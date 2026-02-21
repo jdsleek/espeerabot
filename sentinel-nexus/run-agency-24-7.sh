@@ -12,6 +12,13 @@ cd "$REPO_ROOT"
 echo "=== Jobmaster Agency — 24/7 ==="
 echo ""
 
+# 0. Security check (OpenClaw bind loopback, no credentials in repo)
+if [[ -f "$SENTINEL/verify-openclaw-security.sh" ]]; then
+  bash "$SENTINEL/verify-openclaw-security.sh" 2>/dev/null || echo "! Security check had warnings — see sentinel-nexus/OPENCLAW_SECURITY_CHECKLIST.md"
+fi
+echo "Stack: OpenClaw (not TinyClaw). See sentinel-nexus/SETUP_STACK.md"
+echo ""
+
 # 1. OpenClaw gateway (runs crons every 5 min: ClawTasks + Moltbook)
 if ! command -v openclaw &>/dev/null; then
   echo "OpenClaw CLI not in PATH. Install OpenClaw and ensure 'openclaw' works."
@@ -46,13 +53,14 @@ bash "$SENTINEL/run-agency-cycle-now.sh" 2>/dev/null || true
 echo ""
 
 # 5. Autonomous cycle loop: every 2 min run full cycle (claim → submit pending → submit human-front claimed → auto-approve)
-#    So jobs get submitted without you clicking "Run cycle now".
-echo "Starting autonomous cycle loop (every 2 min: claim, submit, approve)..."
+#    Moltbook engage (upvote + comment) runs in same loop; script rate-limits to every 20 min.
+echo "Starting autonomous cycle loop (every 2 min: claim, submit, approve, Moltbook engage)..."
 (
   export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-$HOME/.openclaw}"
   while true; do
     sleep 120
     bash "$SENTINEL/run-agency-cycle-now.sh" 2>/dev/null || true
+    bash "$SENTINEL/moltbook-engage.sh" 2>/dev/null || true
   done
 ) &
 LOOP_PID=$!

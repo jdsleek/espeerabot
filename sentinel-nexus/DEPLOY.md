@@ -19,7 +19,24 @@ Use this when deploying the **OpenClaw gateway** (control UI + chat) via Railway
 | 7. trustedProxies | In `/data/.openclaw/openclaw.json` (or via Setup → Export, edit, Restore), under `gateway` add: **`"trustedProxies": ["127.0.0.1"]`**. Then redeploy. Without this, the UI may show "pairing required" (1008). |
 | 8. Control UI | Open **`https://<your-url>/openclaw?token=YOUR_GATEWAY_TOKEN`**. Bookmark this; path must be `/openclaw`, not `/` or `/control`. |
 
-**Quick reference:** See `sentinel-nexus/railway-gateway-trustedProxies-snippet.json` for the JSON to merge into gateway config. Launcher: copy `openclaw-railway-launch.example.html` to `openclaw-railway-launch.html`, set `RAILWAY_APP_URL` and `GATEWAY_TOKEN`, open in browser.
+**Quick reference:** See `sentinel-nexus/railway-gateway-trustedProxies-snippet.json` for the JSON to merge into gateway config. For **pairing fix + Kimi 2.5** (Groq/Moonshot/NVIDIA) in one step, use `sentinel-nexus/railway-openclaw-kimi25-trustedproxies.json`: paste into Setup → Config editor → Save, set the matching API key in Railway Variables, then run **Debug console** → `gateway.restart`. Launcher: copy `openclaw-railway-launch.example.html` to `openclaw-railway-launch.html`, set `RAILWAY_APP_URL` and `GATEWAY_TOKEN`, open in browser.
+
+---
+
+## Use OpenClaw from the other project on the same domain (espeerabot)
+
+If you deployed OpenClaw to a **separate** Railway project (e.g. `openclaw-xyz.up.railway.app`), you can still use it from your **main** domain (espeerabot) so everything is in one place:
+
+1. In the **espeerabot** Railway service (this repo), add a variable:
+   - **`OPENCLAW_GATEWAY_URL`** = the full URL of your OpenClaw project, e.g. **`https://openclaw-xyz.up.railway.app`** (no trailing slash).
+
+2. Redeploy the espeerabot service.
+
+3. The agency server will **proxy** `/setup` and `/openclaw` (and WebSockets) to that URL. So you can use:
+   - **`https://espeerabot.up.railway.app/setup`** → setup wizard (on the other project)
+   - **`https://espeerabot.up.railway.app/openclaw?token=YOUR_TOKEN`** → Control UI (same domain, same service as your dashboard and files).
+
+One domain, one place: dashboard, Completed, APIs, and OpenClaw setup/UI all from espeerabot.
 
 ---
 

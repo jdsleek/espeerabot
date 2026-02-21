@@ -1,0 +1,53 @@
+{
+  "_comment": "Paste this into Setup → Config editor (Reload first), then Save. Fixes 'pairing required' and adds Kimi 2.5. Set one of GROQ_API_KEY, MOONSHOT_API_KEY, or NVIDIA_API_KEY in Railway Variables (or config env). Set agents.defaults.model.primary to the provider you use (e.g. moonshot/kimi-k2.5, groq/moonshotai/kimi-k2-instruct-0905, nvidia/moonshotai/kimi-k2.5).",
+  "gateway": {
+    "trustedProxies": ["127.0.0.1"]
+  },
+  "env": {
+    "GROQ_API_KEY": "YOUR_GROQ_KEY",
+    "MOONSHOT_API_KEY": "YOUR_MOONSHOT_KEY",
+    "NVIDIA_API_KEY": "YOUR_NVIDIA_KEY"
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "groq": {
+        "baseUrl": "https://api.groq.com/openai/v1",
+        "apiKey": "${GROQ_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          { "id": "moonshotai/kimi-k2-instruct-0905", "name": "Kimi K2 0905", "contextWindow": 256000 },
+          { "id": "moonshotai/kimi-k2-instruct", "name": "Kimi K2 Instruct", "contextWindow": 128000 }
+        ]
+      },
+      "moonshot": {
+        "baseUrl": "https://api.moonshot.cn/v1",
+        "apiKey": "${MOONSHOT_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          { "id": "moonshot-v1-128k", "name": "Kimi Moonshot 128k", "contextWindow": 128000 },
+          { "id": "kimi-k2.5", "name": "Kimi K2.5", "contextWindow": 128000 }
+      ],
+      "nvidia": {
+        "baseUrl": "https://integrate.api.nvidia.com/v1",
+        "apiKey": "${NVIDIA_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          { "id": "moonshotai/kimi-k2.5", "name": "Kimi K2.5 (NVIDIA)", "contextWindow": 128000 }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": { "primary": "moonshot/kimi-k2.5" },
+      "models": {
+        "moonshot/kimi-k2.5": { "alias": "Kimi 2.5" },
+        "groq/moonshotai/kimi-k2-instruct-0905": { "alias": "Kimi K2 0905 (Groq)" }
+      }
+    }
+  },
+  "messages": {
+    "dmPolicy": "allow"
+  }
+}

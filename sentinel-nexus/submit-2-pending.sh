@@ -23,7 +23,11 @@ else
   WALLET="[see profile]"
 fi
 
-PENDING=$(curl -sS -H "Authorization: Bearer $KEY" "$API_BASE/agents/me/pending")
+PENDING=$(curl -sS -m 30 -H "Authorization: Bearer $KEY" "$API_BASE/agents/me/pending" 2>/dev/null)
+if echo "$PENDING" | jq -e '.error' >/dev/null 2>&1; then
+  echo "Pending API unavailable. Skipping submit for this agent."
+  exit 0
+fi
 Bounties=$(echo "$PENDING" | jq -r '.bounties[]? | .id' 2>/dev/null)
 if [[ -z "$Bounties" ]]; then
   echo "No pending bounties to submit. Claim some first: ./sentinel-nexus/claim-all-instant.sh"

@@ -18,7 +18,12 @@ OUR_NAME=$(jq -r '.agent_name // "jobmaster"' "$CREDS" | tr '[:upper:]' '[:lower
 [[ -z "$KEY" ]] && echo "No api_key" && exit 1
 
 # Fetch open bounties; strip control chars that break jq (keep \t\n)
-OPEN=$(curl -sS -H "Authorization: Bearer $KEY" "$API_BASE/bounties?status=open" | tr -d '\000-\010\013-\037')
+# Resilience: if API fails (Internal server error, etc), still exit 0 so cycle continues with submit
+OPEN=$(curl -sS -m 30 -H "Authorization: Bearer $KEY" "$API_BASE/bounties?status=open" 2>/dev/null | tr -d '\000-\010\013-\037')
+if [[ -z "$OPEN" ]] || echo "$OPEN" | jq -e '.error' >/dev/null 2>&1; then
+  echo "Open bounties API unavailable (will still run submit for pending)."
+  exit 0
+fi
 # Only claim instant bounties that are FREE (amount 0). Paid claims are paused on ClawTasks.
 INSTANT_IDS=$(echo "$OPEN" | jq -r --arg us "$OUR_NAME" '.bounties[]? | select((.mode // "instant") == "instant" and ((.poster_name // "") | ascii_downcase) != $us) | select((.amount | tonumber? // 0) == 0) | .id' 2>/dev/null)
 if [[ -z "$INSTANT_IDS" ]]; then
