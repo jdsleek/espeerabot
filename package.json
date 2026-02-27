@@ -17,5 +17,8 @@
   "license": "MIT",
   "devDependencies": {
     "ethers": "^6.16.0"
+  },
+  "dependencies": {
+    "openclaw": "latest"
   }
 }

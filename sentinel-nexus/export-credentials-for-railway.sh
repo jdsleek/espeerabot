@@ -46,5 +46,22 @@ if command -v jq >/dev/null 2>&1; then
   fi
 fi
 
+# OpenClaw gateway (for Control UI + brain cron on Railway)
+OC_JSON="$OPENCLAW/openclaw.json"
+if [[ -f "$OC_JSON" ]]; then
+  echo ""
+  echo "# --- OpenClaw gateway (add one of these for /openclaw to work) ---"
+  TOKEN=$(jq -r '.gateway.auth.token // empty' "$OC_JSON" 2>/dev/null)
+  if [[ -n "$TOKEN" ]]; then
+    echo "OPENCLAW_GATEWAY_TOKEN=$TOKEN"
+    echo "# Also add GROQ_API_KEY (or MOONSHOT_API_KEY or NVIDIA_API_KEY) for the brain."
+  fi
+  echo "# Or full config (base64):"
+  echo -n "OPENCLAW_CONFIG_JSON="
+  base64 < "$OC_JSON" | tr -d '\n'
+  echo ""
+fi
+
 echo ""
 echo "# --- After pasting in Railway Variables, redeploy. Server will write credentials to the volume. ---"
+echo "# For OpenClaw Control UI: add OPENCLAW_GATEWAY_TOKEN + GROQ_API_KEY, then open https://YOUR-RAILWAY-URL/openclaw?token=YOUR_TOKEN"

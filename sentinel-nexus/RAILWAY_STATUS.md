@@ -1,62 +1,53 @@
-# Railway status and setup check
+# Railway status (checked)
 
-Quick reference for what’s on Railway and how to fix it.
+## Verified right now
 
----
+| Service | URL | Reachable? | Notes |
+|---------|-----|------------|--------|
+| **clawdbot-railway-template** | https://espeerabot.up.railway.app | **Yes** | Landing, /hub, /api/stats return 200. Logs show server up, credentials written, autonomous cycle + Moltbook running. |
+| **scrapper** | https://scrapper-production-3674.up.railway.app | **No (404)** | Root and /api/health return 404. Deploys from **jdsleek/scrapper** (different repo) – fix in that repo or check its start command / routes. |
+| **clawdbot-railway-template-sPBe** | https://clawdbot-railway-template-spbe-production.up.railway.app | **Yes** | Page loads but shows "Disconnected from gateway". UI needs a running OpenClaw gateway; this app only serves the frontend. |
 
-## Two different things on Railway
+So **one of the three** (Jobmaster at espeerabot) is up. If you see "none working", try: (1) open https://espeerabot.up.railway.app in an incognito window or another device; (2) Railway dashboard → each service → Deployments → confirm latest is SUCCESS and view logs for crashes.
 
-1. **espeerabot repo** (this repo) → **Jobmaster Agency**: landing, dashboard, hub, brain, APIs. Run with: `node sentinel-nexus/admin/server.js`. See **RAILWAY.md** in repo root.
-2. **OpenClaw gateway** → Control UI + chat. Deploy from Railway template (clawdbot-railway-template), not from this repo. See **DEPLOY.md** (OpenClaw on Railway checklist).
+## Variables and .env
 
-You can have one Railway project for the agency (this repo) and a separate one for the OpenClaw gateway, each with its own domain.
+- **Variables** are set on all 3 services (production env `bb39f067`): OPENCLAW_*, RUN_*_MIN, CLAWTASKS_*_JSON, MOLTBOOK_CREDENTIALS_JSON.
+- **RAILWAY_ENVIRONMENT_ID** in `.env` is set to production `bb39f067...` (was wrong before).
 
----
 
-## Live check (espeerabot.up.railway.app)
+## How to fix each service
 
-When checked:
+- **espeerabot:** Verified up. If you get no response, try another browser/network or Redeploy from Railway dashboard.
+- **scrapper:** 404 – deploys from **jdsleek/scrapper**. Fix in that repo (listen on PORT, expose `/` or health route), then redeploy.
+- **OpenClaw Control (sPBe):** "Disconnected from gateway" – the UI needs a gateway. Use espeerabot for Jobmaster, or run `./sentinel-nexus/run-agency-24-7.sh` locally for gateway + UI.
 
-- **`/`** → Memorial static page (wrong if you want the agency here).
-- **`/setup`**, **`/openclaw`**, **`/api/agency`** → Not found (404).
+## If things still don’t work
 
-So right now the app running at that URL is **not** the Node agency server and **not** the OpenClaw gateway; it’s the static file server (root `index.html` = memorial).
+1. **Redeploy**  
+   Railway → project → each service → Deployments → Redeploy (or push a commit). Variables are already set; redeploy picks them up.
 
----
+2. **OpenClaw Control “Disconnected from gateway”**  
+   The Control UI needs a running **OpenClaw gateway**. `server.js` does not run the gateway; it only **proxies** to `OPENCLAW_GATEWAY_URL` when set. So either:
+   - Run the gateway elsewhere and set **OPENCLAW_GATEWAY_URL** on the service that serves the Control UI (or the one that proxies) to that URL, or  
+   - Run the full stack locally with `./sentinel-nexus/run-agency-24-7.sh` (gateway + dashboard).
 
-## Fix: show Agency at espeerabot.up.railway.app
+3. **Credentials at runtime**  
+   `server.js` writes credentials from env (base64) into `OPENCLAW_STATE_DIR` on startup. On Railway, use a **volume** for that path so they persist across redeploys; otherwise they’re recreated from env each time (OK if vars are set).
 
-If this URL should show the **Jobmaster Agency** (landing, dashboard, hub, brain):
+4. **Check logs**  
+   Railway → service → Deployments → latest → View logs. Look for `[Railway] Wrote credentials from env:` and any startup errors.
 
-1. In **Railway** → your project → **Settings** (or **Deploy**):
-   - Set **Start Command** to: **`node sentinel-nexus/admin/server.js`**
-   - (Or leave Start Command empty and rely on **railway.json** in the repo; it already sets this.)
-2. **Redeploy** (e.g. trigger a new deploy or push to `main`).
-3. **Variables:** Don’t set `PORT` (Railway sets it). Optional: add a **volume** at `/data`, then set **`OPENCLAW_WORKSPACE_DIR=/data/workspace`** so agency data persists.
+## Quick re-apply variables (CLI)
 
-After a successful deploy:
+From repo root with `.env` loaded:
 
-- **`/`** → Agency landing (marketing).
-- **`/hub`** → Hub page.
-- **`/admin/dashboard`** → Dashboard.
-- **`/api/agency`** → JSON (200).
+```bash
+source .env
+export RAILWAY_TOKEN
+ENV_ID=bb39f067-0b69-4262-b991-bba60dc90c2d
+# Then run the variable --set block from set-railway-variables.sh or use:
+./sentinel-nexus/export-credentials-for-railway.sh   # paste into Railway Variables if CLI is flaky
+```
 
----
-
-## OpenClaw gateway on Railway (separate deploy)
-
-If you want **OpenClaw** (setup, control UI, chat) on Railway:
-
-- Deploy from the **OpenClaw / clawdbot-railway-template** (see **DEPLOY.md**).
-- Use the **OpenClaw on Railway — checklist** at the top of **DEPLOY.md**: volume `/data`, variables (SETUP_PASSWORD, PORT=8080, OPENCLAW_STATE_DIR, OPENCLAW_WORKSPACE_DIR), HTTP proxy port 8080, then **trustedProxies** in gateway config so the UI connects without “pairing required”.
-
-That deploy is independent of this repo; it can use the same domain (if you point it there) or a different one.
-
----
-
-## Summary
-
-| Goal | Action |
-|------|--------|
-| Agency (dashboard, hub, brain) at espeerabot.up.railway.app | Set Start Command to `node sentinel-nexus/admin/server.js`, redeploy. See **RAILWAY.md**. |
-| OpenClaw (setup, /openclaw, chat) on Railway | Deploy from OpenClaw template; follow **DEPLOY.md** checklist (volume, vars, trustedProxies). |
+Then redeploy each service from the Railway dashboard.

@@ -25,8 +25,8 @@ const OPENCLAW =
   (IS_RAILWAY ? "/data/.openclaw" : null) ||
   path.join(process.env.HOME || process.env.USERPROFILE || "", ".openclaw");
 const SENTINEL_DIR = path.join(__dirname, "..");
-// When set, proxy /setup and /openclaw to this URL (other Railway project) so one domain serves both agency and OpenClaw
-const OPENCLAW_GATEWAY_URL = (process.env.OPENCLAW_GATEWAY_URL || "").trim().replace(/\/$/, "");
+// When set, proxy /setup and /openclaw to this URL (other Railway project) or localhost when gateway runs in-process
+let OPENCLAW_GATEWAY_URL = (process.env.OPENCLAW_GATEWAY_URL || "").trim().replace(/\/$/, "");
 
 function readJson(filePath) {
   try {
@@ -135,7 +135,85 @@ function writeCredentialsFromEnv() {
     console.error("[Railway] writeCredentialsFromEnv:", e.message);
   }
 }
+
+// Railway: write openclaw.json from env so the gateway can run in-process
+function writeOpenClawConfigFromEnv() {
+  if (!IS_RAILWAY || !fs.existsSync(OPENCLAW)) return;
+  const configPath = path.join(OPENCLAW, "openclaw.json");
+  if (fs.existsSync(configPath)) return; // Already have config (e.g. from volume)
+  let cfg = null;
+  const raw = (process.env.OPENCLAW_CONFIG_JSON || "").trim();
+  if (raw) {
+    try {
+      const s = raw.startsWith("eyJ") || /^[A-Za-z0-9+/=]+$/.test(raw) ? Buffer.from(raw, "base64").toString("utf8") : raw;
+      cfg = JSON.parse(s);
+      // Patch workspace path for Railway
+      const ws = process.env.OPENCLAW_WORKSPACE_DIR || "/data/workspace";
+      if (cfg.agents && cfg.agents.defaults) cfg.agents.defaults.workspace = ws;
+      if (cfg.skills && cfg.skills.load && Array.isArray(cfg.skills.load.extraDirs)) {
+        cfg.skills.load.extraDirs = cfg.skills.load.extraDirs.map((d) => (d && d.includes(".openclaw") ? path.join(OPENCLAW, "skills") : d)).filter(Boolean);
+      }
+      if (!cfg.gateway) cfg.gateway = {};
+      if (!Array.isArray(cfg.gateway.trustedProxies)) cfg.gateway.trustedProxies = ["127.0.0.1"];
+    } catch (_) {}
+  }
+  if (!cfg && process.env.OPENCLAW_GATEWAY_TOKEN) {
+    const token = process.env.OPENCLAW_GATEWAY_TOKEN.trim();
+    const groq = (process.env.GROQ_API_KEY || "").trim();
+    const moonshot = (process.env.MOONSHOT_API_KEY || "").trim();
+    const nvidia = (process.env.NVIDIA_API_KEY || "").trim();
+    const apiKey = groq || moonshot || nvidia;
+    const primary = groq ? "groq/moonshotai/kimi-k2-instruct-0905" : moonshot ? "moonshot/kimi-k2.5" : nvidia ? "nvidia/moonshotai/kimi-k2.5" : null;
+    cfg = {
+      gateway: { mode: "local", bind: "loopback", trustedProxies: ["127.0.0.1"], auth: { token } },
+      agents: { defaults: { workspace: process.env.OPENCLAW_WORKSPACE_DIR || "/data/workspace", model: primary ? { primary } : {} } },
+      env: { GROQ_API_KEY: groq || "", MOONSHOT_API_KEY: moonshot || "", NVIDIA_API_KEY: nvidia || "" }
+    };
+    if (apiKey) cfg.env = cfg.env || {};
+  }
+  if (cfg) {
+    try {
+      fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2), "utf8");
+      console.log("[Railway] Wrote openclaw.json from env");
+    } catch (e) {
+      console.error("[Railway] writeOpenClawConfigFromEnv:", e.message);
+    }
+  }
+}
+
+// Railway: spawn OpenClaw gateway when config exists and we're not proxying elsewhere
+function spawnOpenClawGateway() {
+  if (!IS_RAILWAY || OPENCLAW_GATEWAY_URL) return;
+  const configPath = path.join(OPENCLAW, "openclaw.json");
+  if (!fs.existsSync(configPath)) return;
+  const { spawn } = require("child_process");
+  const repoRoot = path.join(__dirname, "..", "..");
+  const openclawBin = path.join(repoRoot, "node_modules", ".bin", "openclaw");
+  const bin = fs.existsSync(openclawBin) ? openclawBin : "npx";
+  const args = fs.existsSync(openclawBin) ? ["gateway", "run"] : ["openclaw", "gateway", "run"];
+  const ws = process.env.OPENCLAW_WORKSPACE_DIR || "/data/workspace";
+  if (fs.existsSync(ws)) {
+    const soulSrc = path.join(SENTINEL_DIR, "SOUL.md");
+    const soulDst = path.join(ws, "SOUL.md");
+    if (fs.existsSync(soulSrc) && !fs.existsSync(soulDst)) {
+      try { fs.copyFileSync(soulSrc, soulDst); console.log("[Railway] Seeded workspace SOUL.md"); } catch (_) {}
+    }
+  }
+  const child = spawn(bin, args, {
+    env: { ...process.env, OPENCLAW_STATE_DIR: OPENCLAW, OPENCLAW_WORKSPACE_DIR: process.env.OPENCLAW_WORKSPACE_DIR || "/data/workspace" },
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  child.stdout.on("data", (d) => { const s = String(d).trim(); if (s) console.log("[gateway]", s); });
+  child.stderr.on("data", (d) => { const s = String(d).trim(); if (s) console.error("[gateway]", s); });
+  child.on("error", (e) => console.error("[Railway] Gateway spawn error:", e.message));
+  child.on("exit", (code) => code != null && code !== 0 && console.error("[Railway] Gateway exited:", code));
+  OPENCLAW_GATEWAY_URL = "http://127.0.0.1:18789";
+  console.log("[Railway] OpenClaw gateway spawned (proxy /openclaw → " + OPENCLAW_GATEWAY_URL + ")");
+}
+
 writeCredentialsFromEnv();
+writeOpenClawConfigFromEnv();
+spawnOpenClawGateway();
 
 /** MoltX API: register agent. Returns { api_key, claim_code, agent_name } or { error }. */
 async function moltxRegister(agentName = "ClawBrain", displayName = "ClawBrain", description = "Agency brain. Hire my swarm of AI workers.", avatarEmoji = "🧠") {
