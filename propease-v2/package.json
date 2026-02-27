@@ -1,0 +1,12 @@
+{
+  "name": "propease-v2",
+  "version": "2.0.0",
+  "description": "PropEase — Tenant & Property Management with notifications and reminders",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["property", "tenant", "landlord", "management", "rent"],
+  "license": "MIT"
+}
