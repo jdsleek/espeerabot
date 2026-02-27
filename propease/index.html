@@ -605,15 +605,38 @@
 
 <script>
 // ═══════════════════════════════════════════
-//  DATA LAYER — localStorage persistence
+//  DATA LAYER — API or localStorage
 // ═══════════════════════════════════════════
 const COLORS = ['#c9a84c','#5b8ccc','#5bab6e','#d97c3a','#9b6bb5','#cc5b7a','#5bbccc'];
+let API_MODE = false;
 
 function loadData(key, def) {
   try { const v = localStorage.getItem('propease_' + key); return v ? JSON.parse(v) : def; } catch(e) { return def; }
 }
 function saveData(key, val) {
   try { localStorage.setItem('propease_' + key, JSON.stringify(val)); } catch(e) {}
+}
+
+async function initData() {
+  try {
+    const h = await fetch('/api/health').then(r => r.json()).catch(() => ({}));
+    if (h.db) {
+      API_MODE = true;
+      const [t, p, tk, a, r] = await Promise.all([
+        fetch('/api/tenants').then(x => x.json()),
+        fetch('/api/payments').then(x => x.json()),
+        fetch('/api/tickets').then(x => x.json()),
+        fetch('/api/activity').then(x => x.json()),
+        fetch('/api/reminders').then(x => x.json())
+      ]);
+      DB.tenants = (t && Array.isArray(t)) ? t : [];
+      DB.payments = (p && Array.isArray(p)) ? p : [];
+      DB.tickets = (tk && Array.isArray(tk)) ? tk : [];
+      DB.activity = (a && Array.isArray(a)) ? a : [];
+      DB.reminders = (r && Array.isArray(r)) ? r : [];
+      DB.tenants.forEach(x => { x.moveIn = x.moveIn || x.move_in; x.leaseEnd = x.leaseEnd || x.lease_end; });
+    }
+  } catch (e) { /* stay on localStorage */ }
 }
 
 const defaultTenants = [
@@ -651,6 +674,7 @@ let DB = {
 };
 
 function save() {
+  if (API_MODE) return;
   saveData('tenants', DB.tenants);
   saveData('payments', DB.payments);
   saveData('tickets', DB.tickets);
@@ -658,10 +682,16 @@ function save() {
   saveData('reminders', DB.reminders);
 }
 
-function addActivity(type, text, color) {
-  DB.activity.unshift({ type, text, time:'Just now', color });
-  if (DB.activity.length > 20) DB.activity.pop();
-  save();
+async function addActivity(type, text, color) {
+  if (API_MODE) {
+    try { await fetch('/api/activity', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({type,text,time:'Just now',color}) }); } catch(e){}
+    const r = await fetch('/api/activity').then(x=>x.json()).catch(()=>[]);
+    if (Array.isArray(r)) { DB.activity = r.slice(0,20); }
+  } else {
+    DB.activity.unshift({ type, text, time:'Just now', color });
+    if (DB.activity.length > 20) DB.activity.pop();
+    save();
+  }
   renderDashboard();
 }
 
@@ -853,13 +883,12 @@ function searchTenants(q) {
   renderTenants(DB.tenants.filter(t => t.name.toLowerCase().includes(q.toLowerCase()) || t.unit.toLowerCase().includes(q.toLowerCase())));
 }
 
-function addTenant() {
+async function addTenant() {
   const fname = document.getElementById('newFname').value.trim();
   const lname = document.getElementById('newLname').value.trim();
   if (!fname || !lname) { showToast('Please enter tenant name', 'red'); return; }
   const name = fname + ' ' + lname;
   const newT = {
-    id: Date.now(),
     name, fname, lname,
     unit: document.getElementById('newUnit').value,
     rent: parseInt(document.getElementById('newRent').value) || 0,
@@ -874,14 +903,21 @@ function addTenant() {
     color: COLORS[DB.tenants.length % COLORS.length],
     notes: document.getElementById('newNotes').value,
   };
-  DB.tenants.push(newT);
-  save();
+  if (API_MODE) {
+    try {
+      const res = await fetch('/api/tenants', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(newT) });
+      const created = await res.json();
+      created.moveIn = created.moveIn || created.move_in; created.leaseEnd = created.leaseEnd || created.lease_end;
+      DB.tenants.push(created);
+    } catch (e) { showToast('Failed to add tenant', 'red'); return; }
+  } else {
+    newT.id = Date.now(); DB.tenants.push(newT); save();
+  }
   closeModal('addTenantModal');
   renderTenants(DB.tenants);
   updateSidebar();
   addActivity('onboard', 'New tenant onboarded: ' + name, 'var(--blue)');
   showToast(name + ' onboarded successfully!', 'green');
-  // Clear form
   ['newFname','newLname','newPhone','newEmail','newRent','newDeposit','newPin','newNotes'].forEach(id => document.getElementById(id).value = '');
 }
 
@@ -953,29 +989,37 @@ function editTenantFromDetail() {
   openModal('editTenantModal');
 }
 
-function saveEditTenant() {
+async function saveEditTenant() {
   const id = parseInt(document.getElementById('editTenantId').value);
   const t = DB.tenants.find(x => x.id === id);
   if (!t) return;
   const fname = document.getElementById('editFname').value.trim();
   const lname = document.getElementById('editLname').value.trim();
-  t.fname = fname; t.lname = lname; t.name = fname + ' ' + lname;
-  t.phone = document.getElementById('editPhone').value;
-  t.email = document.getElementById('editEmail').value;
-  t.rent = parseInt(document.getElementById('editRent').value) || t.rent;
-  t.leaseEnd = document.getElementById('editLeaseEnd').value;
-  t.status = document.getElementById('editStatus').value;
-  t.pin = document.getElementById('editPin').value || t.pin;
-  save(); closeModal('editTenantModal');
+  const patch = { id, fname, lname, name: fname + ' ' + lname,
+    phone: document.getElementById('editPhone').value,
+    email: document.getElementById('editEmail').value,
+    rent: parseInt(document.getElementById('editRent').value) || t.rent,
+    leaseEnd: document.getElementById('editLeaseEnd').value,
+    status: document.getElementById('editStatus').value,
+    pin: document.getElementById('editPin').value || t.pin };
+  t.fname = fname; t.lname = lname; t.name = patch.name; t.phone = patch.phone; t.email = patch.email; t.rent = patch.rent; t.leaseEnd = patch.leaseEnd; t.status = patch.status; t.pin = patch.pin;
+  if (API_MODE) {
+    try { await fetch('/api/tenants', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(patch) }); } catch (e) { showToast('Failed to update', 'red'); return; }
+  } else save();
+  closeModal('editTenantModal');
   renderTenants(DB.tenants); renderDashboard(); renderPayments(); renderAgreements();
   showToast('Tenant updated!', 'green');
 }
 
-function deleteTenant() {
+async function deleteTenant() {
   const id = parseInt(document.getElementById('editTenantId').value);
   if (!confirm('Are you sure you want to remove this tenant?')) return;
+  if (API_MODE) {
+    try { await fetch('/api/tenants', { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id}) }); } catch (e) { showToast('Failed to remove', 'red'); return; }
+  }
   DB.tenants = DB.tenants.filter(t => t.id !== id);
-  save(); closeModal('editTenantModal');
+  if (!API_MODE) save();
+  closeModal('editTenantModal');
   renderTenants(DB.tenants); renderDashboard();
   showToast('Tenant removed', 'red');
 }
@@ -1002,7 +1046,7 @@ function renderPayments() {
     </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">No payments recorded yet</td></tr>';
 }
 
-function recordPayment() {
+async function recordPayment() {
   const tenant = document.getElementById('payTenant').value;
   const amount = parseInt(document.getElementById('payAmount').value);
   const date = document.getElementById('payDate').value;
@@ -1016,9 +1060,12 @@ function recordPayment() {
     ref: document.getElementById('payRef').value || 'MANUAL',
     status: 'paid'
   };
+  if (API_MODE) {
+    try { await fetch('/api/payments', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p) }); } catch (e) { showToast('Failed to record payment', 'red'); return; }
+  }
   DB.payments.unshift(p);
   if (t) t.status = 'paid';
-  save();
+  if (!API_MODE) save();
   closeModal('recordPaymentModal');
   renderPayments(); renderDashboard(); renderTenants(DB.tenants);
   addActivity('payment', tenant + ' paid ' + fmt(amount), 'var(--green)');
@@ -1139,12 +1186,12 @@ function filterTickets(f, el) {
   renderTickets(f);
 }
 
-function addTicket() {
+async function addTicket() {
   const tenant = document.getElementById('tickTenant').value;
   const title = document.getElementById('tickTitle').value.trim();
   if (!title) { showToast('Please enter a title', 'red'); return; }
   const t = DB.tenants.find(x => x.name === tenant);
-  DB.tickets.unshift({
+  const ticket = {
     id: 'T' + uid().toUpperCase(),
     tenant, unit: t ? t.unit : '',
     category: document.getElementById('tickCategory').value,
@@ -1153,8 +1200,12 @@ function addTicket() {
     priority: document.getElementById('tickPriority').value,
     status: 'open',
     date: new Date().toISOString().slice(0,10)
-  });
-  save();
+  };
+  if (API_MODE) {
+    try { await fetch('/api/tickets', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(ticket) }); } catch (e) { showToast('Failed to submit ticket', 'red'); return; }
+  }
+  DB.tickets.unshift(ticket);
+  if (!API_MODE) save();
   closeModal('addTicketModal');
   renderTickets(currentFilter);
   addActivity('maintenance', 'Maintenance ticket opened: ' + title, 'var(--orange)');
@@ -1163,9 +1214,16 @@ function addTicket() {
   document.getElementById('tickDesc').value = '';
 }
 
-function resolveTicket(id) {
+async function resolveTicket(id) {
   const t = DB.tickets.find(x => x.id === id);
-  if (t) { t.status = 'resolved'; save(); renderTickets(currentFilter); showToast('Ticket resolved!', 'green'); }
+  if (!t) return;
+  if (API_MODE) {
+    try { await fetch('/api/tickets', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, status:'resolved'}) }); } catch (e) { showToast('Failed to resolve', 'red'); return; }
+  }
+  t.status = 'resolved';
+  if (!API_MODE) save();
+  renderTickets(currentFilter);
+  showToast('Ticket resolved!', 'green');
 }
 
 function notifyTenantTicket(name, id) {
@@ -1202,27 +1260,44 @@ function renderReminders() {
     </div>`;
   });
   custom.forEach((r, i) => {
+    const rid = r.id || i;
     html += `<div class="alert-item info">
-      <div><div class="alert-text">${r.tenant} — ${r.type}</div><div class="alert-meta">${r.message || ''} · ${fmtDate(r.date)}</div></div>
-      <div class="alert-action" onclick="dismissCustomReminder(${i})">Dismiss ✕</div>
+      <div><div class="alert-text">${r.tenant} — ${r.type || r.title}</div><div class="alert-meta">${r.message || r.notes || ''} · ${fmtDate(r.date || r.due_date)}</div></div>
+      <div class="alert-action" onclick="dismissCustomReminder('${rid}', ${i})">Dismiss ✕</div>
     </div>`;
   });
   document.getElementById('remindersList').innerHTML = html || '<div style="font-size:12px;color:var(--green);padding:8px 0">✓ No pending reminders!</div>';
 }
 
-function dismissCustomReminder(i) {
-  DB.reminders.splice(i, 1); save(); renderReminders();
+async function dismissCustomReminder(id, idx) {
+  if (API_MODE && typeof id === 'string' && !id.match(/^\d+$/)) {
+    try { await fetch('/api/reminders', { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id}) }); } catch (e) {}
+  }
+  DB.reminders.splice(idx, 1);
+  if (!API_MODE) save();
+  renderReminders();
 }
 
-function addReminder() {
-  DB.reminders.push({
+async function addReminder() {
+  const rem = {
     tenant: document.getElementById('remTenant').value,
     type: document.getElementById('remType').value,
     message: document.getElementById('remMessage').value,
     date: document.getElementById('remDate').value,
-    urgency: 'info'
-  });
-  save(); closeModal('addReminderModal'); renderReminders();
+    title: document.getElementById('remType').value,
+    due_date: document.getElementById('remDate').value,
+    notes: document.getElementById('remMessage').value
+  };
+  if (API_MODE) {
+    try { await fetch('/api/reminders', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(rem) }); } catch (e) { showToast('Failed to add reminder', 'red'); return; }
+    const r = await fetch('/api/reminders').then(x=>x.json()).catch(()=>[]);
+    if (Array.isArray(r)) DB.reminders = r.map(x => ({ ...x, type: x.title, message: x.notes, date: x.due_date }));
+  } else {
+    DB.reminders.push({ ...rem, urgency: 'info' });
+    save();
+  }
+  closeModal('addReminderModal');
+  renderReminders();
   showToast('Reminder saved!', 'green');
 }
 
@@ -1335,10 +1410,10 @@ function renderTenantPortal(t) {
     : '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">No previous requests.</div>';
 }
 
-function submitTenantTicket() {
+async function submitTenantTicket() {
   const title = document.getElementById('tpIssueTitle').value.trim();
   if (!title || !loggedInTenant) { showToast('Please fill in the issue title', 'red'); return; }
-  DB.tickets.unshift({
+  const ticket = {
     id: 'T' + uid().toUpperCase(),
     tenant: loggedInTenant.name,
     unit: loggedInTenant.unit,
@@ -1348,8 +1423,12 @@ function submitTenantTicket() {
     priority: document.getElementById('tpPriority').value,
     status: 'open',
     date: new Date().toISOString().slice(0,10)
-  });
-  save();
+  };
+  if (API_MODE) {
+    try { await fetch('/api/tickets', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(ticket) }); } catch (e) { showToast('Failed to submit', 'red'); return; }
+  }
+  DB.tickets.unshift(ticket);
+  if (!API_MODE) save();
   renderTenantPortal(loggedInTenant);
   document.getElementById('tpIssueTitle').value = '';
   document.getElementById('tpIssueDesc').value = '';
@@ -1418,7 +1497,8 @@ function checkAndNotifyReminders() {
     }
   });
   (DB.reminders || []).forEach((r, i) => {
-    if (r.date === today) {
+    const rd = r.date || r.due_date;
+    if (rd === today) {
       const key = 'custom_' + i;
       if (!loadNotified(key).includes(today)) {
         showBrowserNotification('PropEase: Reminder', (r.tenant !== 'all' ? r.tenant + ' — ' : '') + (r.type || 'Reminder') + ': ' + (r.message || ''), key);
@@ -1448,6 +1528,9 @@ setInterval(() => {
   const lv = document.getElementById('landlordView');
   if (lv && lv.style.display === 'flex') checkAndNotifyReminders();
 }, REMINDER_CHECK_MS);
+
+// Load data from API if available (on page load)
+document.addEventListener('DOMContentLoaded', () => initData());
 </script>
 </body>
 </html>
