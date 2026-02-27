@@ -343,6 +343,7 @@
       <div style="display:flex;gap:10px;">
         <input class="search-bar" placeholder="Search tenants..." oninput="searchTenants(this.value)">
         <button class="btn" onclick="openModal('addTenantModal')">+ Add Tenant</button>
+        <button class="btn-ghost" onclick="clearAllData()" style="color:var(--red)">Clear all data</button>
       </div>
     </div>
     <div class="tenant-grid" id="tenantGrid"></div>
@@ -884,6 +885,21 @@ function populateSelects() {
   if (remEl) remEl.innerHTML = '<option value="all">All Tenants</option>' + names;
   const bulkEl = document.getElementById('bulkTarget');
   if (bulkEl) bulkEl.innerHTML = '<option value="all">All Tenants</option>' + names;
+}
+
+async function clearAllData() {
+  if (!confirm('This will permanently delete ALL tenants, payments, tickets, and reminders. Are you sure?')) return;
+  const pass = prompt('Enter your landlord password to confirm:');
+  if (!pass) return;
+  try {
+    const res = await fetch('/api/clear-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pass }) });
+    const data = await res.json();
+    if (data.ok) {
+      await initData();
+      renderTenants(DB.tenants); renderDashboard(); renderPayments(); renderAgreements(); renderTickets('all'); renderReminders();
+      showToast('All data cleared. Add your real tenants now.', 'green');
+    } else showToast(data.error || 'Failed', 'red');
+  } catch (e) { showToast('Failed', 'red'); }
 }
 
 function showToast(msg, type='gold') {

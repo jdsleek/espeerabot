@@ -265,6 +265,24 @@ async function apiSendEmail(req, res, body) {
   return json(res, { ok: false, error: 'Invalid request or tenant has no email' }, 400);
 }
 
+async function apiClearData(req, res, body) {
+  if (req.method !== 'POST') { res.writeHead(405); res.end(); return; }
+  const expected = process.env.ADMIN_PASSWORD || process.env.LANDLORD_PASSWORD || 'admin123';
+  if (body?.password !== expected) return json(res, { ok: false, error: 'Incorrect password' }, 403);
+  try {
+    await pool.query('DELETE FROM agreement_signatures');
+    await pool.query('DELETE FROM payments');
+    await pool.query('DELETE FROM tickets');
+    await pool.query('DELETE FROM reminders');
+    await pool.query('DELETE FROM activity');
+    await pool.query('DELETE FROM tenants');
+    return json(res, { ok: true });
+  } catch (e) {
+    console.error('Clear data failed:', e);
+    return json(res, { error: e.message }, 500);
+  }
+}
+
 async function apiAgreementSignatures(req, res, body) {
   if (req.method === 'GET') {
     const tenant = (new URL(req.url || '', 'http://x').searchParams).get('tenant');
@@ -325,6 +343,7 @@ async function handleApi(req, res, pathname, body) {
     if (pathname === '/api/agreement-templates') return apiAgreementTemplates(req, res, body);
     if (pathname === '/api/agreement-signatures') return apiAgreementSignatures(req, res, body);
     if (pathname === '/api/send-email') return apiSendEmail(req, res, body);
+    if (pathname === '/api/clear-data' && req.method === 'POST') return apiClearData(req, res, body);
     return json(res, { error: 'Not found' }, 404);
   } catch (e) {
     console.error('API error:', e);
