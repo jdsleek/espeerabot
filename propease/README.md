@@ -37,7 +37,17 @@ npm start
 4. Connect the service to your repo (eggy or a fork)
 5. Settings → **Root Directory** = `propease` (if repo root is eggy)
 6. **Variables** — Railway auto-injects `DATABASE_URL` from the Postgres plugin
-7. Deploy — server runs `db:init` on first start, then serves the app
+7. **Email (Brevo)** — Add these variables for email notifications:
+   ```
+   BREVO_SMTP_HOST=smtp-relay.brevo.com
+   BREVO_SMTP_PORT=587
+   BREVO_SMTP_USER=864a82002@smtp-brevo.com
+   BREVO_SMTP_PASS=<paste Brevo SMTP key>
+   BREVO_FROM_EMAIL=naijaaiacademy@gmail.com
+   BREVO_FROM_NAME=Property Ease Manager
+   LANDLORD_EMAIL=naijaaiacademy@gmail.com
+   ```
+8. Deploy — server runs `db:init` on first start, then serves the app
 
 ## Notifications
 

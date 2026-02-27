@@ -1,12 +1,15 @@
 #!/usr/bin/env node
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 /**
  * PropEase — Property Management with Postgres.
  * Serves SPA + REST API. Set DATABASE_URL for DB mode.
+ * Email via Brevo SMTP: BREVO_SMTP_*
  */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
+const email = require('./scripts/email.js');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ROOT = __dirname;
@@ -21,6 +24,7 @@ const MIME = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.svg': 'image/svg+xml',
+  '.webmanifest': 'application/manifest+json',
   '.woff2': 'font/woff2',
 };
 
@@ -53,8 +57,13 @@ function parseBody(req) {
   });
 }
 
-function json(res, data) {
-  res.setHeader('Content-Type', 'application/json');
+function json(res, data, status) {
+  if (res.headersSent) return;
+  if (status) {
+    res.writeHead(status, { 'Content-Type': 'application/json' });
+  } else {
+    res.setHeader('Content-Type', 'application/json');
+  }
   res.end(JSON.stringify(data));
 }
 
@@ -138,7 +147,10 @@ async function apiPayments(req, res, body) {
 async function apiTickets(req, res, body) {
   if (req.method === 'GET') {
     const r = await pool.query('SELECT * FROM tickets ORDER BY created_at DESC');
-    return json(res, r.rows.map(t => ({ id: t.id, tenant: t.tenant, unit: t.unit, category: t.category, title: t.title, desc: t.desc, priority: t.priority, status: t.status, date: t.date })));
+    return json(res, r.rows.map(t => ({
+      id: t.id, tenant: t.tenant, unit: t.unit, category: t.category, title: t.title, desc: t.desc,
+      priority: t.priority, status: t.status, date: t.date, updatedBy: t.updated_by, updatedAt: t.updated_at
+    })));
   }
   if (req.method === 'POST') {
     const { id, tenant, unit, category, title, desc, priority, status, date } = body;
@@ -149,11 +161,21 @@ async function apiTickets(req, res, body) {
     return json(res, { ok: true });
   }
   if (req.method === 'PUT' && body.status) {
-    await pool.query('UPDATE tickets SET status=$2 WHERE id=$1', [body.id, body.status]);
+    const { id, status, updatedBy } = body;
+    await pool.query(
+      'UPDATE tickets SET status=$2, updated_by=$3, updated_at=NOW() WHERE id=$1',
+      [id, status, updatedBy || 'Landlord']
+    );
+    const tk = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
+    const ticket = tk.rows[0];
+    if (ticket) {
+      const t = await pool.query('SELECT * FROM tenants WHERE name = $1', [ticket.tenant]);
+      const tenant = t.rows[0];
+      if (tenant && tenant.email) email.sendMaintenanceUpdate(tenant, ticket.title, status).catch(() => {});
+    }
     return json(res, { ok: true });
   }
-  res.writeHead(405);
-  res.end();
+  return json(res, { error: 'Method not allowed' }, 405);
 }
 
 async function apiActivity(req, res, body) {
@@ -189,11 +211,106 @@ async function apiReminders(req, res, body) {
   res.end();
 }
 
+async function apiAgreementTemplates(req, res, body) {
+  if (req.method === 'GET') {
+    const r = await pool.query('SELECT * FROM agreement_templates ORDER BY id DESC LIMIT 1');
+    const row = r.rows[0];
+    return json(res, row ? { id: row.id, title: row.title, content: row.content } : null);
+  }
+  if (req.method === 'POST' || req.method === 'PUT') {
+    const { id, title, content } = body;
+    if (id) {
+      await pool.query('UPDATE agreement_templates SET title=$2, content=$3, updated_at=NOW() WHERE id=$1', [id, title || 'Lease Agreement', content || '']);
+      return json(res, { ok: true, id });
+    }
+    const r = await pool.query('INSERT INTO agreement_templates (title, content) VALUES ($1, $2) RETURNING id', [title || 'Lease Agreement', content || '']);
+    return json(res, { ok: true, id: r.rows[0].id });
+  }
+  res.writeHead(405);
+  res.end();
+}
+
+async function apiSendEmail(req, res, body) {
+  if (req.method !== 'POST') { res.writeHead(405); res.end(); return; }
+  const { type, tenantName, tenantId } = body;
+  if (type === 'rent-reminder' && (tenantName || tenantId)) {
+    const q = tenantId ? await pool.query('SELECT * FROM tenants WHERE id = $1', [tenantId]) : await pool.query('SELECT * FROM tenants WHERE name = $1', [tenantName]);
+    const t = q.rows[0];
+    if (t && t.email) {
+      const r = await email.sendRentReminder(t, t.rent);
+      return json(res, r);
+    }
+  }
+  if (type === 'lease-expiry' && (tenantName || tenantId)) {
+    const q = tenantId ? await pool.query('SELECT * FROM tenants WHERE id = $1', [tenantId]) : await pool.query('SELECT * FROM tenants WHERE name = $1', [tenantName]);
+    const t = q.rows[0];
+    if (t && t.email) {
+      const daysLeft = Math.round((new Date(t.lease_end || t.leaseEnd) - new Date()) / 86400000);
+      const r = await email.sendLeaseExpiryAlert(t, daysLeft, t.lease_end || t.leaseEnd);
+      return json(res, r);
+    }
+  }
+  if (type === 'maintenance-update') {
+    const { ticketId, status } = body;
+    const tk = await pool.query('SELECT * FROM tickets WHERE id = $1', [ticketId]);
+    const ticket = tk.rows[0];
+    if (!ticket) return json(res, { ok: false, error: 'Ticket not found' }, 404);
+    const t = await pool.query('SELECT * FROM tenants WHERE name = $1', [ticket.tenant]);
+    const tenant = t.rows[0];
+    if (tenant && tenant.email) {
+      const r = await email.sendMaintenanceUpdate(tenant, ticket.title, status || ticket.status);
+      return json(res, r);
+    }
+  }
+  return json(res, { ok: false, error: 'Invalid request or tenant has no email' }, 400);
+}
+
+async function apiAgreementSignatures(req, res, body) {
+  if (req.method === 'GET') {
+    const tenant = (new URL(req.url || '', 'http://x').searchParams).get('tenant');
+    let q = 'SELECT s.*, t.title FROM agreement_signatures s JOIN agreement_templates t ON t.id = s.template_id ORDER BY s.signed_at DESC';
+    const params = [];
+    if (tenant) {
+      params.push(tenant);
+      q = 'SELECT s.*, t.title FROM agreement_signatures s JOIN agreement_templates t ON t.id = s.template_id WHERE s.tenant_name = $1 ORDER BY s.signed_at DESC';
+    }
+    const r = await pool.query(q, params);
+    return json(res, r.rows.map(x => ({ id: x.id, templateId: x.template_id, tenantName: x.tenant_name, signedAt: x.signed_at, ipAddress: x.ip_address, hasSignature: !!x.signature_image })));
+  }
+  if (req.method === 'POST') {
+    const templateId = body.templateId ?? body.template_id;
+    const tenantName = body.tenantName ?? body.tenant_name;
+    const sigImg = body.signatureImage ?? body.signature_image ?? null;
+    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0]?.trim() || req.socket?.remoteAddress || '';
+    const ua = req.headers['user-agent'] || '';
+    await pool.query(
+      `INSERT INTO agreement_signatures (template_id, tenant_name, signed_at, ip_address, user_agent, signature_image) VALUES ($1,$2,NOW(),$3,$4,$5)
+       ON CONFLICT (template_id, tenant_name) DO UPDATE SET signed_at=NOW(), ip_address=EXCLUDED.ip_address, user_agent=EXCLUDED.user_agent, signature_image=COALESCE(EXCLUDED.signature_image, agreement_signatures.signature_image)`,
+      [templateId, tenantName, ip, ua, sigImg]
+    );
+    const t = await pool.query('SELECT name, fname, unit, email FROM tenants WHERE name = $1', [tenantName]);
+    const tenant = t.rows[0];
+    if (tenant && tenant.email) {
+      email.sendAgreementSignedTenant(tenant).catch(() => {});
+      const landlordEmail = process.env.LANDLORD_EMAIL || process.env.BREVO_FROM_EMAIL;
+      if (landlordEmail) email.sendAgreementSignedLandlord(landlordEmail, tenantName, tenant.unit).catch(() => {});
+    }
+    return json(res, { ok: true });
+  }
+  res.writeHead(405);
+  res.end();
+}
+
 async function handleApi(req, res, pathname, body) {
   cors(res);
+  // Auth endpoint — no DB required
+  if (pathname === '/api/auth/landlord' && req.method === 'POST') {
+    const expected = process.env.ADMIN_PASSWORD || process.env.LANDLORD_PASSWORD || 'admin123';
+    const ok = body?.password === expected;
+    return json(res, { ok });
+  }
   if (!pool) {
-    res.writeHead(503);
-    return json(res, { error: 'Database not configured' });
+    return json(res, { error: 'Database not configured' }, 503);
   }
   try {
     if (pathname === '/api/health') {
@@ -205,18 +322,19 @@ async function handleApi(req, res, pathname, body) {
     if (pathname === '/api/tickets') return apiTickets(req, res, body);
     if (pathname === '/api/activity') return apiActivity(req, res, body);
     if (pathname === '/api/reminders') return apiReminders(req, res, body);
-    res.writeHead(404);
-    json(res, { error: 'Not found' });
+    if (pathname === '/api/agreement-templates') return apiAgreementTemplates(req, res, body);
+    if (pathname === '/api/agreement-signatures') return apiAgreementSignatures(req, res, body);
+    if (pathname === '/api/send-email') return apiSendEmail(req, res, body);
+    return json(res, { error: 'Not found' }, 404);
   } catch (e) {
     console.error('API error:', e);
-    res.writeHead(500);
-    json(res, { error: e.message });
+    return json(res, { error: e.message }, 500);
   }
 }
 
 async function serveStatic(req, res, pathname) {
   let p = pathname === '/' ? '/index.html' : pathname;
-  p = p.split('?')[0];
+  p = p.split('?')[0].replace(/^\/+/, '') || 'index.html';
   const file = path.join(ROOT, p);
   const ext = path.extname(file);
   if (p !== '/index.html' && p !== '/' && !p.startsWith('/.')) {

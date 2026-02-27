@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>PropEase — Tenant Management</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,500;0,700;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -12,7 +12,7 @@
     --red: #e05c4b; --green: #5bab6e; --blue: #5b8ccc; --orange: #d97c3a; --text: #ddd8cc;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'DM Mono', monospace; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+  body { font-family: 'DM Mono', monospace; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; -webkit-text-size-adjust: 100%; }
 
   /* VIEWS */
   #landlordView, #tenantView, #loginScreen { display: none; width: 100%; }
@@ -38,7 +38,7 @@
   .logo h1 { font-family: 'Fraunces', serif; font-size: 22px; color: var(--gold); letter-spacing: -0.5px; }
   .logo p { font-size: 10px; color: var(--muted); margin-top: 2px; }
   .nav { padding: 20px 0; flex: 1; }
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; cursor: pointer; font-size: 12px; color: var(--muted); transition: all 0.15s; border-left: 2px solid transparent; letter-spacing: 0.5px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 12px 20px; cursor: pointer; font-size: 12px; color: var(--muted); transition: all 0.15s; border-left: 2px solid transparent; letter-spacing: 0.5px; min-height: 44px; }
   .nav-item:hover { color: var(--cream); background: var(--surface2); }
   .nav-item.active { color: var(--gold); border-left-color: var(--gold); background: rgba(201,168,76,0.07); }
   .nav-icon { font-size: 16px; width: 20px; text-align: center; }
@@ -203,6 +203,61 @@
   .notify-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(91,171,110,0.15); border: 1px solid var(--green); color: var(--green); border-radius: 6px; font-size: 11px; cursor: pointer; transition: all 0.15s; }
   .notify-btn:hover { background: rgba(91,171,110,0.25); }
   .notify-btn.disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* MOBILE */
+  .landlord-header { display: none; }
+  .menu-toggle { display: none; background: transparent; border: 1px solid var(--border); color: var(--cream); padding: 10px 14px; border-radius: 8px; font-size: 18px; cursor: pointer; margin-right: 12px; min-width: 44px; min-height: 44px; }
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9; }
+  .sidebar-overlay.open { display: block; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  @media (max-width: 992px) {
+    .landlord-header { display: flex !important; align-items: center; }
+    .sidebar { transform: translateX(-100%); transition: transform 0.25s; width: 260px; }
+    .sidebar.open { transform: translateX(0); }
+    .main { margin-left: 0; padding: 16px 12px; padding-top: 60px; }
+    .menu-toggle { display: inline-flex !important; align-items: center; justify-content: center; }
+    .landlord-header { position: fixed; top: 0; left: 0; right: 0; height: 52px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; z-index: 11; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .two-col { grid-template-columns: 1fr; }
+    .tenant-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .page-header { flex-direction: column; gap: 12px; align-items: flex-start; margin-bottom: 20px; }
+    .page-header h2 { font-size: 24px; }
+    .form-row { grid-template-columns: 1fr; }
+    .login-box { width: 94vw; max-width: 380px; padding: 24px 20px; }
+    .tenant-portal-header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+    .tenant-portal-header h1 { font-size: 16px; }
+    .tenant-portal-body { padding: 16px; margin: 16px auto; }
+    .tp-hero { padding: 18px; flex-direction: column; align-items: flex-start; gap: 12px; }
+    .tp-stat-row { grid-template-columns: 1fr; }
+    .tp-card { padding: 16px; }
+    .tp-card h2 { font-size: 16px; }
+    .modal { padding: 20px; width: 96vw; max-width: 420px; }
+    .alert-item { flex-wrap: wrap; gap: 10px; }
+    .alert-action { margin-left: 0; }
+    .search-bar { width: 100%; max-width: 220px; }
+    .tab-bar { flex-wrap: wrap; }
+    .tab { flex: 1; min-width: fit-content; text-align: center; }
+    #signaturePad { width: 100% !important; max-width: 100%; }
+  }
+
+  @media (max-width: 600px) {
+    #loginScreen { padding: 12px; min-height: 100dvh; }
+    .login-box { width: 100%; padding: 20px 16px; }
+    .login-input { font-size: 16px; }
+    .stats-grid { grid-template-columns: 1fr; }
+    .tenant-grid { grid-template-columns: 1fr; }
+    .page-header > div:last-child { flex-wrap: wrap; gap: 8px; }
+    .btn, .btn-ghost { padding: 10px 14px; min-height: 44px; font-size: 12px; }
+    .table { font-size: 11px; }
+    .table th, .table td { padding: 10px 8px; }
+    .ticket-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .ticket-meta { flex-direction: column; gap: 6px; }
+    .agreement-item { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .tenant-detail-header { flex-direction: column; align-items: flex-start; }
+    .dash-payment-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .receipt { width: 96vw; padding: 20px; }
+  }
 </style>
 </head>
 <body>
@@ -218,7 +273,7 @@
     </div>
     <div id="landlordLoginForm">
       <input class="login-input" type="password" id="landlordPass" placeholder="Enter landlord password" onkeydown="if(event.key==='Enter')doLogin()">
-      <p class="login-hint" style="margin-bottom:12px">Default password: <strong style="color:var(--gold)">admin123</strong></p>
+      <p class="login-hint" style="margin-bottom:12px">Enter your landlord password</p>
     </div>
     <div id="tenantLoginForm" style="display:none">
       <input class="login-input" type="text" id="tenantNameInput" placeholder="Your full name (e.g. Amira Hassan)" onkeydown="if(event.key==='Enter')doLogin()">
@@ -231,7 +286,12 @@
 
 <!-- ═══════════════════════ LANDLORD VIEW ═══════════════════════ -->
 <div id="landlordView">
-<aside class="sidebar">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+<div class="landlord-header" id="landlordHeader">
+  <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+  <span style="font-family:'Fraunces',serif;font-size:18px;color:var(--gold)">PropEase</span>
+</div>
+<aside class="sidebar" id="sidebar">
   <div class="logo"><h1>PropEase</h1><p>Property Management</p></div>
   <nav class="nav">
     <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">⊞</span> Dashboard</div>
@@ -271,8 +331,8 @@
     </div>
     <div class="card">
       <div class="card-title">Payment Overview — Current Month</div>
-      <table class="table"><thead><tr><th>Tenant</th><th>Unit</th><th>Amount</th><th>Due Date</th><th>Status</th><th>WhatsApp</th></tr></thead>
-      <tbody id="dashPaymentTable"></tbody></table>
+      <div class="table-wrap"><table class="table"><thead><tr><th>Tenant</th><th>Unit</th><th>Amount</th><th>Due Date</th><th>Status</th><th>WhatsApp</th></tr></thead>
+      <tbody id="dashPaymentTable"></tbody></table></div>
     </div>
   </div>
 
@@ -300,8 +360,8 @@
     <div class="stats-grid" id="paymentStats"></div>
     <div class="card">
       <div class="card-title">Payment History</div>
-      <table class="table"><thead><tr><th>Date</th><th>Tenant</th><th>Unit</th><th>Amount</th><th>Method</th><th>Period</th><th>Status</th><th>Receipt</th></tr></thead>
-      <tbody id="paymentHistory"></tbody></table>
+      <div class="table-wrap"><table class="table"><thead><tr><th>Date</th><th>Tenant</th><th>Unit</th><th>Amount</th><th>Method</th><th>Period</th><th>Status</th><th>Receipt</th></tr></thead>
+      <tbody id="paymentHistory"></tbody></table></div>
     </div>
   </div>
 
@@ -309,7 +369,12 @@
   <div class="page" id="page-agreements">
     <div class="page-header">
       <div><h2>Agreements</h2><p>Lease agreements and documents</p></div>
-      <button class="btn" onclick="openModal('addAgreementModal')">+ New Agreement</button>
+      <button class="btn" onclick="openModal('editAgreementTemplateModal')">Upload / Edit General Agreement</button>
+    </div>
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title">General Agreement Template</div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Tenants see this with their name filled in. Use placeholders: {tenant_name}, {unit}, {rent}, {deposit}, {move_in}, {lease_end}</p>
+      <button class="btn-ghost" onclick="openModal('editAgreementTemplateModal')">Edit Template →</button>
     </div>
     <div class="two-col">
       <div class="card"><div class="card-title">Active Leases</div><div id="agreementList"></div></div>
@@ -402,9 +467,13 @@
       <div id="tpNotices"></div>
     </div>
     <div class="tp-card">
+      <h2>📄 My Agreement</h2>
+      <div id="tpAgreements"></div>
+    </div>
+    <div class="tp-card">
       <h2>💳 Payment History</h2>
-      <table class="table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Period</th><th>Status</th><th>Receipt</th></tr></thead>
-      <tbody id="tpPayments"></tbody></table>
+      <div class="table-wrap"><table class="table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Period</th><th>Status</th><th>Receipt</th></tr></thead>
+      <tbody id="tpPayments"></tbody></table></div>
     </div>
     <div class="tp-card">
       <h2>🔧 Maintenance Requests</h2>
@@ -504,6 +573,38 @@
     <div class="modal-actions">
       <button class="btn-ghost" onclick="closeModal('addAgreementModal')">Cancel</button>
       <button class="btn" onclick="addAgreement()">Create Agreement</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit General Agreement Template -->
+<div class="modal-bg" id="editAgreementTemplateModal">
+  <div class="modal" style="max-width:640px">
+    <h3>General Agreement Template</h3>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Tenants see this with their details filled in. Placeholders: {tenant_name}, {unit}, {rent}, {deposit}, {move_in}, {lease_end}</p>
+    <div class="form-group"><label>Title</label><input id="agreementTemplateTitle" placeholder="Lease Agreement"></div>
+    <div class="form-group"><label>Agreement Text</label><textarea id="agreementTemplateContent" rows="14" placeholder="Paste your standard lease agreement here. Use {tenant_name}, {unit}, {rent}, etc. for tenant-specific fields." style="font-family:monospace;font-size:11px"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('editAgreementTemplateModal')">Cancel</button>
+      <button class="btn" onclick="saveAgreementTemplate()">Save Template</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sign Agreement (Tenant) -->
+<div class="modal-bg" id="signAgreementModal">
+  <div class="modal" style="max-width:560px">
+    <h3>Sign & Accept Agreement</h3>
+    <div id="signAgreementPreview" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;max-height:200px;overflow-y:auto;font-size:12px;white-space:pre-wrap;margin-bottom:16px"></div>
+    <div class="form-group" id="signaturePadSection">
+      <label style="font-size:10px;color:var(--muted)">Add signature (for court/legal use if required)</label>
+      <canvas id="signaturePad" width="400" height="120" style="border:1px solid var(--border);border-radius:6px;cursor:crosshair;display:block;background:var(--surface2);touch-action:none"></canvas>
+      <button type="button" class="btn-ghost" style="margin-top:6px;font-size:10px" onclick="clearSignaturePad()">Clear</button>
+    </div>
+    <p style="font-size:10px;color:var(--muted);margin:12px 0">By clicking Sign & Accept, you confirm you have read and agree. Timestamp and IP are recorded.</p>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('signAgreementModal')">Cancel</button>
+      <button class="btn" onclick="submitSignature()">Sign & Accept</button>
     </div>
   </div>
 </div>
@@ -622,18 +723,22 @@ async function initData() {
     const h = await fetch('/api/health').then(r => r.json()).catch(() => ({}));
     if (h.db) {
       API_MODE = true;
-      const [t, p, tk, a, r] = await Promise.all([
+      const [t, p, tk, a, r, tmpl, sigs] = await Promise.all([
         fetch('/api/tenants').then(x => x.json()),
         fetch('/api/payments').then(x => x.json()),
         fetch('/api/tickets').then(x => x.json()),
         fetch('/api/activity').then(x => x.json()),
-        fetch('/api/reminders').then(x => x.json())
+        fetch('/api/reminders').then(x => x.json()),
+        fetch('/api/agreement-templates').then(x => x.json()),
+        fetch('/api/agreement-signatures').then(x => x.json())
       ]);
       DB.tenants = (t && Array.isArray(t)) ? t : [];
       DB.payments = (p && Array.isArray(p)) ? p : [];
       DB.tickets = (tk && Array.isArray(tk)) ? tk : [];
       DB.activity = (a && Array.isArray(a)) ? a : [];
       DB.reminders = (r && Array.isArray(r)) ? r : [];
+      DB.agreementTemplate = tmpl;
+      DB.agreementSignatures = (sigs && Array.isArray(sigs)) ? sigs : [];
       DB.tenants.forEach(x => { x.moveIn = x.moveIn || x.move_in; x.leaseEnd = x.leaseEnd || x.lease_end; });
     }
   } catch (e) { /* stay on localStorage */ }
@@ -671,6 +776,8 @@ let DB = {
   tickets: loadData('tickets', defaultTickets),
   activity: loadData('activity', defaultActivity),
   reminders: loadData('reminders', []),
+  agreementTemplate: loadData('agreementTemplate', null),
+  agreementSignatures: loadData('agreementSignatures', []),
 };
 
 function save() {
@@ -680,6 +787,8 @@ function save() {
   saveData('tickets', DB.tickets);
   saveData('activity', DB.activity);
   saveData('reminders', DB.reminders);
+  saveData('agreementTemplate', DB.agreementTemplate);
+  saveData('agreementSignatures', DB.agreementSignatures);
 }
 
 async function addActivity(type, text, color) {
@@ -709,12 +818,14 @@ function setLoginMode(mode, el) {
   document.getElementById('loginError').style.display = 'none';
 }
 
-function doLogin() {
+async async function doLogin() {
   const err = document.getElementById('loginError');
   err.style.display = 'none';
   if (currentMode === 'landlord') {
     const pass = document.getElementById('landlordPass').value;
-    if (pass === 'admin123') {
+    const res = await fetch('/api/auth/landlord', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pass }) });
+    const data = await res.json();
+    if (data.ok) {
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('landlordView').style.display = 'flex';
       initLandlord();
@@ -753,6 +864,11 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
 
 function openModal(id) {
   populateSelects();
+  if (id === 'editAgreementTemplateModal') {
+    const tmpl = DB.agreementTemplate;
+    document.getElementById('agreementTemplateTitle').value = tmpl && tmpl.title ? tmpl.title : 'Lease Agreement';
+    document.getElementById('agreementTemplateContent').value = tmpl && tmpl.content ? tmpl.content : '';
+  }
   document.getElementById(id).classList.add('open');
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -779,11 +895,20 @@ function showToast(msg, type='gold') {
   setTimeout(() => toast.remove(), 3000);
 }
 
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  sb.classList.toggle('open');
+  ov.classList.toggle('open');
+  document.body.style.overflow = ov.classList.contains('open') ? 'hidden' : '';
+}
+
 function showPage(id, el) {
   document.querySelectorAll('#landlordView .page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   if (el) el.classList.add('active');
+  if (window.innerWidth <= 992) { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('open'); document.body.style.overflow = ''; }
   if (id === 'tenants') renderTenants(DB.tenants);
   if (id === 'payments') renderPayments();
   if (id === 'agreements') renderAgreements();
@@ -841,7 +966,10 @@ function renderDashboard() {
     : pending.map(t => `
       <div class="alert-item warn">
         <div><div class="alert-text">${t.name} — Rent Due</div><div class="alert-meta">${t.unit} · ${fmt(t.rent)}</div></div>
-        <div class="alert-action" onclick="sendWhatsApp('${t.name}')">📱 WhatsApp →</div>
+        <div style="display:flex;gap:8px">
+          <span class="alert-action" onclick="sendEmailReminder('${t.name}','rent')">📧 Email</span>
+          <span class="alert-action" onclick="sendWhatsApp('${t.name}')">📱 WhatsApp</span>
+        </div>
       </div>`).join('');
 
   // activity
@@ -857,7 +985,7 @@ function renderDashboard() {
       <td>${t.name}</td><td>${t.unit}</td><td>${fmt(t.rent)}</td>
       <td style="color:var(--muted);font-size:11px">1st of month</td>
       <td><span class="badge badge-${t.status==='paid'?'green':t.status==='overdue'?'red':'orange'}">${t.status.toUpperCase()}</span></td>
-      <td><span class="btn-whatsapp" style="padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer" onclick="sendWhatsApp('${t.name}')">📱 Remind</span></td>
+      <td><span style="display:inline-flex;gap:4px"><span style="padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;background:rgba(91,140,204,0.2);color:var(--blue)" onclick="sendEmailReminder('${t.name}','rent')" title="Email">📧</span><span class="btn-whatsapp" style="padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer" onclick="sendWhatsApp('${t.name}')">📱</span></span></td>
     </tr>`).join('');
 }
 
@@ -1115,14 +1243,16 @@ function printReceipt() { window.print(); }
 //  AGREEMENTS
 // ═══════════════════════════════════════════
 function renderAgreements() {
+  const sigs = DB.agreementSignatures || [];
   document.getElementById('agreementList').innerHTML = DB.tenants.map(t => {
     const daysLeft = daysDiff(t.leaseEnd);
     const exp = daysLeft < 90;
+    const signed = sigs.find(s => (s.tenantName || s.tenant_name) === t.name);
     return `<div class="agreement-item">
       <span class="agreement-icon">📄</span>
       <div class="agreement-info">
         <div class="agreement-name">${t.name} · ${t.unit}</div>
-        <div class="agreement-meta">Ends ${fmtDate(t.leaseEnd)} · ${fmt(t.rent)}/mo · Deposit: ${fmt(t.deposit)}</div>
+        <div class="agreement-meta">Ends ${fmtDate(t.leaseEnd)} · ${fmt(t.rent)}/mo · Deposit: ${fmt(t.deposit)}${signed ? ' · ✓ Signed ' + fmtDate(signed.signedAt || signed.signed_at) : ' · Pending signature'}</div>
       </div>
       <span class="badge ${exp?'badge-orange':'badge-green'}">${exp ? daysLeft + 'd left' : 'Active'}</span>
     </div>`;
@@ -1143,6 +1273,87 @@ function addAgreement() {
   renderAgreements();
 }
 
+async function saveAgreementTemplate() {
+  const title = document.getElementById('agreementTemplateTitle').value.trim() || 'Lease Agreement';
+  const content = document.getElementById('agreementTemplateContent').value;
+  if (API_MODE) {
+    try {
+      const res = await fetch('/api/agreement-templates', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ id: DB.agreementTemplate?.id, title, content }) });
+      const data = await res.json();
+      DB.agreementTemplate = { ...(DB.agreementTemplate||{}), title, content, id: data?.id ?? DB.agreementTemplate?.id };
+    } catch (e) { showToast('Failed to save', 'red'); return; }
+  } else {
+    DB.agreementTemplate = { id: 1, title, content };
+  }
+  if (!API_MODE) save();
+  closeModal('editAgreementTemplateModal');
+  renderAgreements();
+  showToast('Template saved! Tenants can now sign.', 'green');
+}
+
+let signaturePadCtx = null;
+function openSignAgreementModal() {
+  if (!loggedInTenant) return;
+  const tmpl = DB.agreementTemplate;
+  if (!tmpl || !tmpl.content) { showToast('No agreement template', 'red'); return; }
+  const personalized = tmpl.content
+    .replace(/\{tenant_name\}/g, loggedInTenant.name)
+    .replace(/\{unit\}/g, loggedInTenant.unit)
+    .replace(/\{rent\}/g, fmt(loggedInTenant.rent))
+    .replace(/\{deposit\}/g, fmt(loggedInTenant.deposit || 0))
+    .replace(/\{move_in\}/g, fmtDate(loggedInTenant.moveIn || loggedInTenant.move_in))
+    .replace(/\{lease_end\}/g, fmtDate(loggedInTenant.leaseEnd || loggedInTenant.lease_end));
+  document.getElementById('signAgreementPreview').textContent = personalized;
+  const canvas = document.getElementById('signaturePad');
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  initSignaturePad();
+  openModal('signAgreementModal');
+}
+
+function initSignaturePad() {
+  const canvas = document.getElementById('signaturePad');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#ddd8cc';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  let drawing = false;
+  const getPos = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches ? e.touches[0] : e;
+    return { x: (touch.clientX - rect.left) * (canvas.width / rect.width), y: (touch.clientY - rect.top) * (canvas.height / rect.height) };
+  };
+  canvas.onmousedown = canvas.ontouchstart = (e) => { e.preventDefault(); drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+  canvas.onmousemove = canvas.ontouchmove = (e) => { e.preventDefault(); if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+  canvas.onmouseup = canvas.onmouseleave = canvas.ontouchend = () => { drawing = false; };
+}
+
+function clearSignaturePad() {
+  const canvas = document.getElementById('signaturePad');
+  if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
+
+async function submitSignature() {
+  if (!loggedInTenant) return;
+  const tmpl = DB.agreementTemplate;
+  if (!tmpl) { showToast('Template not found', 'red'); return; }
+  const templateId = tmpl.id || 1;
+  const canvas = document.getElementById('signaturePad');
+  const signatureImage = canvas && canvas.toDataURL ? canvas.toDataURL('image/png') : null;
+  const payload = { templateId, tenantName: loggedInTenant.name, signatureImage };
+  if (API_MODE) {
+    try {
+      await fetch('/api/agreement-signatures', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    } catch (e) { showToast('Failed to submit', 'red'); return; }
+  }
+  DB.agreementSignatures = DB.agreementSignatures || [];
+  DB.agreementSignatures.push({ templateId, tenantName: loggedInTenant.name, signedAt: new Date().toISOString(), signatureImage });
+  if (!API_MODE) save();
+  closeModal('signAgreementModal');
+  renderTenantPortal(loggedInTenant);
+  showToast('Agreement signed! Thank you.', 'green');
+}
+
 // ═══════════════════════════════════════════
 //  MAINTENANCE
 // ═══════════════════════════════════════════
@@ -1159,25 +1370,30 @@ function renderTickets(filter) {
   });
   document.getElementById('ticketList').innerHTML = filtered.length === 0
     ? '<div class="empty-state"><span class="emoji">✅</span>No tickets in this category</div>'
-    : filtered.map(t => `
+    : filtered.map(t => {
+        const updatedInfo = (t.updatedBy || t.updated_by) ? ` · Updated by ${t.updatedBy || t.updated_by}${(t.updatedAt || t.updated_at) ? ' ' + fmtDate(t.updatedAt || t.updated_at) : ''}` : '';
+        return `
       <div class="ticket">
         <div class="ticket-header">
           <div><div class="ticket-title">${t.title}</div><div class="ticket-body">${t.desc}</div></div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;margin-left:16px">
             <span class="badge ${t.priority==='High'?'badge-red':t.priority==='Medium'?'badge-orange':'badge-blue'}">${t.priority}</span>
-            <span class="badge ${t.status==='open'?'badge-red':t.status==='in-progress'?'badge-orange':'badge-green'}">${t.status}</span>
+            <select class="status-select" style="font-size:10px;padding:4px 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer" onchange="updateTicketStatus('${t.id}', this.value)">
+              <option value="open" ${t.status==='open'?'selected':''}>Open</option>
+              <option value="in-progress" ${t.status==='in-progress'?'selected':''}>In Progress</option>
+              <option value="resolved" ${t.status==='resolved'?'selected':''}>Resolved</option>
+            </select>
           </div>
         </div>
         <div class="ticket-meta">
           <span>🏠 ${t.tenant} · ${t.unit}</span>
           <span>🔧 ${t.category}</span>
           <span>📅 ${fmtDate(t.date)}</span>
-          ${t.status !== 'resolved'
-            ? `<span style="color:var(--gold);cursor:pointer" onclick="resolveTicket('${t.id}')">Mark Resolved →</span>`
-            : `<span style="color:var(--green)">✓ Resolved</span>`}
+          ${updatedInfo ? `<span style="color:var(--muted);font-size:10px">${updatedInfo}</span>` : ''}
           <span style="color:var(--blue);cursor:pointer" onclick="notifyTenantTicket('${t.tenant}','${t.id}')">📱 Notify Tenant</span>
         </div>
-      </div>`).join('');
+      </div>`;
+      }).join('');
 }
 
 function filterTickets(f, el) {
@@ -1214,16 +1430,22 @@ async function addTicket() {
   document.getElementById('tickDesc').value = '';
 }
 
-async function resolveTicket(id) {
+async function updateTicketStatus(id, status) {
   const t = DB.tickets.find(x => x.id === id);
   if (!t) return;
   if (API_MODE) {
-    try { await fetch('/api/tickets', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, status:'resolved'}) }); } catch (e) { showToast('Failed to resolve', 'red'); return; }
+    try { await fetch('/api/tickets', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, status, updatedBy:'Landlord'}) }); } catch (e) { showToast('Failed to update', 'red'); return; }
   }
-  t.status = 'resolved';
+  t.status = status;
+  t.updatedBy = 'Landlord';
+  t.updatedAt = new Date().toISOString().slice(0,10);
   if (!API_MODE) save();
   renderTickets(currentFilter);
-  showToast('Ticket resolved!', 'green');
+  showToast('Status updated to ' + status, 'green');
+}
+
+async function resolveTicket(id) {
+  await updateTicketStatus(id, 'resolved');
 }
 
 function notifyTenantTicket(name, id) {
@@ -1250,13 +1472,19 @@ function renderReminders() {
   pending.forEach(t => {
     html += `<div class="alert-item warn">
       <div><div class="alert-text">${t.name} — Rent Due</div><div class="alert-meta">${t.unit} · ${fmt(t.rent)} outstanding</div></div>
-      <div class="alert-action" onclick="sendWhatsApp('${t.name}')">📱 WhatsApp</div>
+      <div style="display:flex;gap:8px">
+        <span class="alert-action" onclick="sendEmailReminder('${t.name}','rent')">📧 Email</span>
+        <span class="alert-action" onclick="sendWhatsApp('${t.name}')">📱 WhatsApp</span>
+      </div>
     </div>`;
   });
   expiring.forEach(t => {
     html += `<div class="alert-item info">
       <div><div class="alert-text">${t.name} — Lease Expiring</div><div class="alert-meta">${daysDiff(t.leaseEnd)} days left · ${fmtDate(t.leaseEnd)}</div></div>
-      <div class="alert-action" onclick="sendLeaseReminder('${t.name}')">📱 WhatsApp</div>
+      <div style="display:flex;gap:8px">
+        <span class="alert-action" onclick="sendEmailReminder('${t.name}','lease')">📧 Email</span>
+        <span class="alert-action" onclick="sendLeaseReminder('${t.name}')">📱 WhatsApp</span>
+      </div>
     </div>`;
   });
   custom.forEach((r, i) => {
@@ -1299,6 +1527,18 @@ async function addReminder() {
   closeModal('addReminderModal');
   renderReminders();
   showToast('Reminder saved!', 'green');
+}
+
+async function sendEmailReminder(name, type) {
+  const t = DB.tenants.find(x => x.name === name);
+  if (!t) return;
+  if (!t.email) { showToast('No email for ' + name, 'red'); return; }
+  if (!API_MODE) { showToast('Email requires server/DB', 'red'); return; }
+  try {
+    const res = await fetch('/api/send-email', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ type: type==='lease'?'lease-expiry':'rent-reminder', tenantName: name }) });
+    const data = await res.json();
+    showToast(data.ok ? 'Email sent to ' + t.fname : (data.error||'Failed'), data.ok ? 'green' : 'red');
+  } catch (e) { showToast('Failed to send email', 'red'); }
 }
 
 function sendWhatsApp(name) {
@@ -1398,6 +1638,32 @@ function renderTenantPortal(t) {
     notices += `<div class="notice-box"><div class="notice-title">📅 Lease Expiring Soon</div><div class="notice-body">Your lease expires in ${daysLeft} days (${fmtDate(t.leaseEnd)}). Please contact your landlord to discuss renewal.</div></div>`;
   }
   document.getElementById('tpNotices').innerHTML = notices || '<div style="font-size:12px;color:var(--muted)">No notices at this time.</div>';
+
+  // Agreements
+  const tmpl = DB.agreementTemplate;
+  const sig = (DB.agreementSignatures || []).find(s => (s.tenantName || s.tenant_name) === t.name);
+  const hasSigned = !!sig;
+  const personalizedContent = tmpl && tmpl.content ? tmpl.content
+    .replace(/\{tenant_name\}/g, t.name)
+    .replace(/\{unit\}/g, t.unit)
+    .replace(/\{rent\}/g, fmt(t.rent))
+    .replace(/\{deposit\}/g, fmt(t.deposit || 0))
+    .replace(/\{move_in\}/g, fmtDate(t.moveIn || t.move_in))
+    .replace(/\{lease_end\}/g, fmtDate(t.leaseEnd || t.lease_end))
+    : '';
+  let agreementsHtml = '';
+  if (!tmpl || !tmpl.content) {
+    agreementsHtml = '<div style="font-size:12px;color:var(--muted)">No agreement template set. Landlord will add one shortly.</div>';
+  } else {
+    agreementsHtml = `<div style="margin-bottom:16px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${tmpl.title || 'Lease Agreement'}</div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;max-height:140px;overflow-y:auto;font-size:11px;white-space:pre-wrap;margin-bottom:12px">${personalizedContent.slice(0,500)}${personalizedContent.length>500?'...':''}</div>
+      ${hasSigned
+        ? `<span class="badge badge-green">✓ Signed ${fmtDate(sig.signedAt || sig.signed_at)}</span>`
+        : `<button class="btn" onclick="openSignAgreementModal()">Sign & Accept</button>`}
+    </div>`;
+  }
+  document.getElementById('tpAgreements').innerHTML = agreementsHtml;
 
   // Payments
   document.getElementById('tpPayments').innerHTML = tPays.length
@@ -1531,6 +1797,11 @@ setInterval(() => {
 
 // Load data from API if available (on page load)
 document.addEventListener('DOMContentLoaded', () => initData());
+
+// PWA: register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>

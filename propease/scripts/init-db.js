@@ -56,6 +56,8 @@ async function init() {
         priority TEXT,
         status TEXT DEFAULT 'open',
         date TEXT,
+        updated_by TEXT,
+        updated_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
       CREATE TABLE IF NOT EXISTS activity (
@@ -78,7 +80,29 @@ async function init() {
         id SERIAL PRIMARY KEY,
         password_hash TEXT
       );
+      CREATE TABLE IF NOT EXISTS agreement_templates (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL DEFAULT 'Lease Agreement',
+        content TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS agreement_signatures (
+        id SERIAL PRIMARY KEY,
+        template_id INTEGER NOT NULL REFERENCES agreement_templates(id),
+        tenant_name TEXT NOT NULL,
+        signed_at TIMESTAMPTZ NOT NULL,
+        ip_address TEXT,
+        user_agent TEXT,
+        signature_image TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(template_id, tenant_name)
+      );
     `);
+    await pool.query(`
+      DO $$ BEGIN ALTER TABLE tickets ADD COLUMN updated_by TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+      DO $$ BEGIN ALTER TABLE tickets ADD COLUMN updated_at TIMESTAMPTZ; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+    `).catch(() => {});
     const r = await pool.query('SELECT COUNT(*) FROM tenants');
     if (Number(r.rows[0].count) === 0) {
       await pool.query(`
@@ -114,6 +138,23 @@ async function init() {
           ('maintenance','Maintenance request opened — Fatima Aliyu','2 days ago','var(--orange)'),
           ('onboard','New tenant onboarded: Tunde Bakare','1 week ago','var(--blue)');
       `);
+      const tmpl = await pool.query('SELECT COUNT(*) FROM agreement_templates');
+      if (Number(tmpl.rows[0].count) === 0) {
+        const defaultContent = [
+          'LEASE AGREEMENT',
+          '',
+          'This Lease Agreement is entered into between the Landlord and {tenant_name} ("Tenant") for the property at Unit {unit}.',
+          '',
+          'TERMS:',
+          '• Monthly Rent: {rent} payable on the 1st of each month',
+          '• Security Deposit: {deposit}',
+          '• Lease Term: {move_in} to {lease_end}',
+          '• Tenant agrees to maintain the premises and pay rent on time',
+          '',
+          'By signing below, Tenant acknowledges they have read and agree to these terms.'
+        ].join('\n');
+        await pool.query('INSERT INTO agreement_templates (title, content) VALUES ($1, $2)', ['Standard Lease Agreement', defaultContent]);
+      }
       console.log('Seeded default data');
     }
     console.log('DB initialized OK');
