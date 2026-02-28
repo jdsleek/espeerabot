@@ -279,14 +279,16 @@
       <button class="login-tab active" onclick="setLoginMode('landlord', this)">🏠 Landlord</button>
       <button class="login-tab" onclick="setLoginMode('tenant', this)">👤 Tenant</button>
     </div>
-    <div id="landlordLoginForm">
-      <input class="login-input" type="password" id="landlordPass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <div id="tenantLoginForm" style="display:none">
-      <input class="login-input" type="tel" id="tenantPhoneInput" placeholder="Your phone number (e.g. 0802 111 2233)" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <div class="login-error" id="loginError">Incorrect credentials. Try again.</div>
-    <button class="login-btn" onclick="doLogin()" style="margin-top:4px">Sign In →</button>
+    <form id="loginForm" onsubmit="event.preventDefault();doLogin();return false;">
+      <div id="landlordLoginForm">
+        <input class="login-input" type="password" id="landlordPass" placeholder="Password" autocomplete="current-password">
+      </div>
+      <div id="tenantLoginForm" style="display:none">
+        <input class="login-input" type="tel" id="tenantPhoneInput" placeholder="Your phone number (e.g. 0802 111 2233)" autocomplete="tel">
+      </div>
+      <div class="login-error" id="loginError">Incorrect credentials. Try again.</div>
+      <button class="login-btn" type="submit" style="margin-top:4px">Sign In →</button>
+    </form>
   </div>
 </div>
 
@@ -868,7 +870,7 @@ async function addActivity(type, text, color) {
 }
 
 // ═══════════════════════════════════════════
-//  AUTH
+//  AUTH (expose to window for onclick handlers)
 // ═══════════════════════════════════════════
 let currentMode = 'landlord', loggedInTenant = null;
 
@@ -912,6 +914,8 @@ async function doLogin() {
     } else { err.style.display = 'block'; err.textContent = data.error || 'Invalid credentials'; }
   }
 }
+window.doLogin = doLogin;
+window.setLoginMode = setLoginMode;
 
 function doLogout() {
   loggedInTenant = null;
