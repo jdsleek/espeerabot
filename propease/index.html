@@ -272,12 +272,10 @@
       <button class="login-tab" onclick="setLoginMode('tenant', this)">👤 Tenant</button>
     </div>
     <div id="landlordLoginForm">
-      <input class="login-input" type="password" id="landlordPass" placeholder="Enter landlord password" onkeydown="if(event.key==='Enter')doLogin()">
-      <p class="login-hint" style="margin-bottom:12px">Enter your landlord password</p>
+      <input class="login-input" type="password" id="landlordPass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div id="tenantLoginForm" style="display:none">
-      <input class="login-input" type="text" id="tenantNameInput" placeholder="Your full name (e.g. Amira Hassan)" onkeydown="if(event.key==='Enter')doLogin()">
-      <input class="login-input" type="password" id="tenantPin" placeholder="Your PIN (default: 1234)" onkeydown="if(event.key==='Enter')doLogin()">
+      <input class="login-input" type="tel" id="tenantPhoneInput" placeholder="Your phone number (e.g. 0802 111 2233)" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div class="login-error" id="loginError">Incorrect credentials. Try again.</div>
     <button class="login-btn" onclick="doLogin()" style="margin-top:4px">Sign In →</button>
@@ -467,6 +465,10 @@
       <h2>📋 My Notices</h2>
       <div id="tpNotices"></div>
     </div>
+    <div class="tp-card" id="tpPendingChangesCard" style="display:none">
+      <h2>📝 Pending Changes (Action Required)</h2>
+      <div id="tpPendingChanges"></div>
+    </div>
     <div class="tp-card">
       <h2>📄 My Agreement</h2>
       <div id="tpAgreements"></div>
@@ -523,7 +525,7 @@
     </div>
     <div class="form-row">
       <div class="form-group"><label>Security Deposit (₦)</label><input id="newDeposit" placeholder="300000" type="number"></div>
-      <div class="form-group"><label>Tenant Portal PIN</label><input id="newPin" placeholder="4-digit PIN e.g. 1234" maxlength="4" type="text"></div>
+      <div class="form-group"><label>Tenant Portal PIN</label><input id="newPin" placeholder="Optional 4-digit PIN" maxlength="4" type="text"></div>
     </div>
     <div class="form-group"><label>Notes</label><textarea id="newNotes" placeholder="Any special terms or notes..."></textarea></div>
     <div class="modal-actions">
@@ -819,7 +821,7 @@ function setLoginMode(mode, el) {
   document.getElementById('loginError').style.display = 'none';
 }
 
-async async function doLogin() {
+async function doLogin() {
   const err = document.getElementById('loginError');
   err.style.display = 'none';
   if (currentMode === 'landlord') {
@@ -827,31 +829,36 @@ async async function doLogin() {
     const res = await fetch('/api/auth/landlord', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pass }) });
     const data = await res.json();
     if (data.ok) {
+      try { localStorage.setItem('propease_landlord', '1'); } catch (e) {}
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('landlordView').style.display = 'flex';
       initLandlord();
     } else { err.style.display = 'block'; }
   } else {
-    const name = document.getElementById('tenantNameInput').value.trim();
-    const pin = document.getElementById('tenantPin').value.trim();
-    const t = DB.tenants.find(t => t.name.toLowerCase() === name.toLowerCase() && t.pin === pin);
-    if (t) {
+    const phone = document.getElementById('tenantPhoneInput').value.trim();
+    if (!phone) { err.style.display = 'block'; err.textContent = 'Enter your phone number'; return; }
+    const res = await fetch('/api/auth/tenant', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone }) });
+    const data = await res.json();
+    if (data.ok && data.tenant) {
+      const t = data.tenant;
+      try { localStorage.setItem('propease_tenant_id', String(t.id)); } catch (e) {}
       loggedInTenant = t;
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('tenantView').style.display = 'block';
       renderTenantPortal(t);
-    } else { err.style.display = 'block'; }
+    } else { err.style.display = 'block'; err.textContent = data.error || 'Phone not found'; }
   }
 }
 
 function doLogout() {
   loggedInTenant = null;
+  try { localStorage.removeItem('propease_landlord'); localStorage.removeItem('propease_tenant_id'); } catch (e) {}
   document.getElementById('landlordView').style.display = 'none';
   document.getElementById('tenantView').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('landlordPass').value = '';
-  document.getElementById('tenantPin').value = '';
-  document.getElementById('tenantNameInput').value = '';
+  const ph = document.getElementById('tenantPhoneInput');
+  if (ph) ph.value = '';
 }
 
 // ═══════════════════════════════════════════
@@ -1089,7 +1096,7 @@ function showTenantDetail(id) {
         <div class="card-title">Contact</div>
         <div style="font-size:12px;margin-bottom:6px">📞 ${t.phone}</div>
         <div style="font-size:12px;margin-bottom:6px">✉️ ${t.email}</div>
-        <div style="font-size:12px">🔑 Portal PIN: ${t.pin}</div>
+        <div style="font-size:12px;color:var(--muted)">Login with phone number</div>
       </div>
       <div>
         <div class="card-title">Lease</div>
@@ -1146,10 +1153,21 @@ async function saveEditTenant() {
     leaseEnd: document.getElementById('editLeaseEnd').value,
     status: document.getElementById('editStatus').value,
     pin: document.getElementById('editPin').value || t.pin };
-  t.fname = fname; t.lname = lname; t.name = patch.name; t.phone = patch.phone; t.email = patch.email; t.rent = patch.rent; t.leaseEnd = patch.leaseEnd; t.status = patch.status; t.pin = patch.pin;
   if (API_MODE) {
-    try { await fetch('/api/tenants', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(patch) }); } catch (e) { showToast('Failed to update', 'red'); return; }
-  } else save();
+    try {
+      const res = await fetch('/api/tenants', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(patch) });
+      const data = await res.json();
+      if (data.pendingRent) {
+        showToast('Rent change proposed. Tenant will be notified to accept.', 'green');
+        closeModal('editTenantModal');
+        await initData();
+        renderTenants(DB.tenants); renderDashboard(); renderPayments(); renderAgreements();
+        return;
+      }
+    } catch (e) { showToast('Failed to update', 'red'); return; }
+  }
+  t.fname = fname; t.lname = lname; t.name = patch.name; t.phone = patch.phone; t.email = patch.email; t.rent = patch.rent; t.leaseEnd = patch.leaseEnd; t.status = patch.status; t.pin = patch.pin;
+  if (!API_MODE) save();
   closeModal('editTenantModal');
   renderTenants(DB.tenants); renderDashboard(); renderPayments(); renderAgreements();
   showToast('Tenant updated!', 'green');
@@ -1619,11 +1637,40 @@ function exportData() {
 // ═══════════════════════════════════════════
 //  TENANT PORTAL
 // ═══════════════════════════════════════════
-function renderTenantPortal(t) {
+async function renderTenantPortal(t) {
   const tPays = DB.payments.filter(p => p.tenant === t.name);
   const tTickets = DB.tickets.filter(tk => tk.tenant === t.name);
   const totalPaid = tPays.reduce((s,p) => s+p.amount, 0);
   const daysLeft = daysDiff(t.leaseEnd);
+
+  let pendingChanges = [];
+  if (API_MODE && t.id) {
+    try { pendingChanges = await fetch('/api/change-requests?tenantId=' + t.id).then(r => r.json()); } catch (e) {}
+  }
+  const pending = (pendingChanges || []).filter(c => c.status === 'pending');
+  const pcCard = document.getElementById('tpPendingChangesCard');
+  const pcDiv = document.getElementById('tpPendingChanges');
+  if (pcCard && pcDiv) {
+    if (pending.length) {
+      pcCard.style.display = 'block';
+      pcDiv.innerHTML = pending.map(c => {
+        const isRent = c.fieldName === 'rent';
+        const label = isRent ? 'Rent change' : c.fieldName;
+        const oldV = isRent ? '₦' + Number(c.oldValue).toLocaleString() : c.oldValue;
+        const newV = isRent ? '₦' + Number(c.newValue).toLocaleString() : c.newValue;
+        return `<div class="notice-box" style="margin-bottom:12px">
+          <div class="notice-title">${label} — Landlord proposed</div>
+          <div class="notice-body">${oldV} → ${newV}</div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn" onclick="respondToChange(${c.id}, 'accepted')">Accept</button>
+            <button class="btn-ghost" style="color:var(--red)" onclick="respondToChange(${c.id}, 'rejected')">Decline</button>
+          </div>
+        </div>`;
+      }).join('');
+    } else {
+      pcCard.style.display = 'none';
+    }
+  }
 
   document.getElementById('tpHero').innerHTML = `
     <div class="tp-avatar" style="background:${t.color}22;color:${t.color}">${getInitials(t.name)}</div>
@@ -1690,6 +1737,19 @@ function renderTenantPortal(t) {
   document.getElementById('tpTickets').innerHTML = tTickets.length
     ? tTickets.map(tk => `<div class="ticket" style="margin-bottom:10px"><div class="ticket-header"><div><div class="ticket-title">${tk.title}</div><div class="ticket-body">${tk.desc}</div></div><span class="badge ${tk.status==='resolved'?'badge-green':tk.status==='in-progress'?'badge-orange':'badge-red'}">${tk.status}</span></div><div class="ticket-meta"><span>📅 ${fmtDate(tk.date)}</span><span>🔧 ${tk.category}</span></div></div>`).join('')
     : '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">No previous requests.</div>';
+}
+
+async function respondToChange(id, status) {
+  if (!loggedInTenant) return;
+  try {
+    const res = await fetch('/api/change-requests', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status, resolvedBy: 'tenant' }) });
+    const data = await res.json();
+    if (data.ok) {
+      await initData();
+      renderTenantPortal(loggedInTenant);
+      showToast(status === 'accepted' ? 'Change accepted' : 'Change declined', 'green');
+    } else showToast(data.error || 'Failed', 'red');
+  } catch (e) { showToast('Failed', 'red'); }
 }
 
 async function submitTenantTicket() {
@@ -1811,8 +1871,27 @@ setInterval(() => {
   if (lv && lv.style.display === 'flex') checkAndNotifyReminders();
 }, REMINDER_CHECK_MS);
 
-// Load data from API if available (on page load)
-document.addEventListener('DOMContentLoaded', () => initData());
+// Load data and restore session
+document.addEventListener('DOMContentLoaded', async () => {
+  await initData();
+  try {
+    const ll = localStorage.getItem('propease_landlord');
+    const tid = localStorage.getItem('propease_tenant_id');
+    if (ll === '1') {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('landlordView').style.display = 'flex';
+      initLandlord();
+    } else if (tid && DB.tenants && DB.tenants.length) {
+      const t = DB.tenants.find(x => String(x.id) === tid);
+      if (t) {
+        loggedInTenant = t;
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('tenantView').style.display = 'block';
+        renderTenantPortal(t);
+      }
+    }
+  } catch (e) {}
+});
 
 // PWA: register service worker
 if ('serviceWorker' in navigator) {

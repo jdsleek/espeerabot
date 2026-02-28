@@ -98,6 +98,21 @@ async function init() {
         created_at TIMESTAMPTZ DEFAULT NOW(),
         UNIQUE(template_id, tenant_name)
       );
+      CREATE TABLE IF NOT EXISTS change_requests (
+        id SERIAL PRIMARY KEY,
+        tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+        tenant_name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        field_name TEXT NOT NULL,
+        old_value TEXT,
+        new_value TEXT,
+        requested_by TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        resolved_at TIMESTAMPTZ,
+        resolved_by TEXT,
+        notes TEXT
+      );
     `);
     await pool.query(`
       DO $$ BEGIN ALTER TABLE tickets ADD COLUMN updated_by TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END $$;

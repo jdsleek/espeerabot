@@ -17,6 +17,7 @@ async function main() {
   }
   const pool = new Pool({ connectionString: DATABASE_URL });
   try {
+    await pool.query('DELETE FROM change_requests');
     await pool.query('DELETE FROM agreement_signatures');
     await pool.query('DELETE FROM payments');
     await pool.query('DELETE FROM tickets');

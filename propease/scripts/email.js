@@ -112,8 +112,18 @@ async function sendWelcomeTenant(tenant, toEmail) {
   const name = tenant ? tenant.fname : 'Tenant';
   const unit = tenant ? tenant.unit : 'your unit';
   const loginUrl = APP_URL;
-  const html = `<div style="font-family:sans-serif;max-width:560px;margin:0 auto"><h2 style="color:#c9a84c">Welcome to PropEase</h2><p>Dear ${name},</p><p>Welcome! We're excited to have you. As we manage your stay and rental period, you can use the PropEase Tenant Portal to view notices, payments, submit maintenance requests, and sign your agreement.</p><p><strong>Login with your full name and PIN</strong> (the one your landlord gave you).</p><p><a href="${loginUrl}" style="display:inline-block;background:#c9a84c;color:#0f0e0c;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin:16px 0">Open Tenant Portal →</a></p><p style="font-size:13px;color:#666">Switch to the "Tenant" tab, enter your name and PIN, then sign in.</p><p>— ${FROM_NAME}</p></div>`;
-  return sendEmail({ to, subject: `Welcome to PropEase — ${unit}`, text: `Dear ${name}, Welcome! Open the Tenant Portal: ${loginUrl} — Use the Tenant tab, enter your name and PIN. — ${FROM_NAME}`, html });
+  const html = `<div style="font-family:sans-serif;max-width:560px;margin:0 auto"><h2 style="color:#c9a84c">Welcome to PropEase</h2><p>Dear ${name},</p><p>Welcome! We're excited to have you. As we manage your stay and rental period, you can use the PropEase Tenant Portal to view notices, payments, submit maintenance requests, and sign your agreement.</p><p><strong>Login with your phone number</strong> (the one we have on file).</p><p><a href="${loginUrl}" style="display:inline-block;background:#c9a84c;color:#0f0e0c;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin:16px 0">Open Tenant Portal →</a></p><p style="font-size:13px;color:#666">Switch to the "Tenant" tab, enter your phone number, then sign in.</p><p>— ${FROM_NAME}</p></div>`;
+  return sendEmail({ to, subject: `Welcome to PropEase — ${unit}`, text: `Dear ${name}, Welcome! Open the Tenant Portal: ${loginUrl} — Use the Tenant tab, enter your phone number. — ${FROM_NAME}`, html });
+}
+
+async function sendRentChangeProposal(tenant, oldRent, newRent) {
+  const fmt = (n) => '₦' + Number(n).toLocaleString();
+  return sendEmail({
+    to: tenant.email,
+    subject: `Rent Change Proposal — ${tenant.unit} · Review & Accept`,
+    text: `Dear ${tenant.fname},\n\nYour landlord has proposed a rent change for ${tenant.unit}: from ${fmt(oldRent)} to ${fmt(newRent)} per month.\n\nPlease log in to the Tenant Portal to review and accept or decline this change. All changes are recorded for your records.\n\nPortal: ${APP_URL}\n\n— ${FROM_NAME}`,
+    html: `<div style="font-family:sans-serif;max-width:560px"><p>Dear ${tenant.fname},</p><p>Your landlord has proposed a rent change for <strong>${tenant.unit}</strong>:</p><p style="font-size:18px;margin:16px 0"><del>${fmt(oldRent)}</del> → <strong>${fmt(newRent)}</strong> per month</p><p>Please log in to the Tenant Portal to review and accept or decline. All changes are recorded for your records.</p><p>${PORTAL_LINK}</p><p>— ${FROM_NAME}</p></div>`,
+  });
 }
 
 module.exports = {
@@ -125,4 +135,5 @@ module.exports = {
   sendMaintenanceUpdate,
   sendWelcomeLandlord,
   sendWelcomeTenant,
+  sendRentChangeProposal,
 };

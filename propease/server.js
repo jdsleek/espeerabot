@@ -73,6 +73,67 @@ function cors(res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
+function mapTenantRow(row) {
+  return { id: row.id, name: row.name, fname: row.fname, lname: row.lname, unit: row.unit, rent: row.rent, phone: row.phone, email: row.email, since: row.since, moveIn: row.move_in, leaseEnd: row.lease_end, deposit: row.deposit, status: row.status, color: row.color, pin: row.pin, notes: row.notes || '' };
+}
+
+function normPhone(s) {
+  const d = String(s || '').replace(/\D/g, '');
+  return d.length >= 10 ? d.slice(-10) : d;
+}
+
+async function apiAuthTenant(req, res, body) {
+  if (req.method !== 'POST') { res.writeHead(405); res.end(); return; }
+  const phone = normPhone(body?.phone);
+  if (!phone || phone.length < 10) return json(res, { ok: false, error: 'Enter a valid phone number' }, 400);
+  const r = await pool.query(`SELECT * FROM tenants WHERE RIGHT(REGEXP_REPLACE(COALESCE(phone,''), '[^0-9]', '', 'g'), 10) = $1`, [phone]);
+  const t = r.rows[0];
+  if (!t) return json(res, { ok: false, error: 'Phone not found' }, 404);
+  return json(res, { ok: true, tenant: mapTenantRow(t) });
+}
+
+async function apiChangeRequests(req, res, body) {
+  if (req.method === 'GET') {
+    const tenantId = (new URL(req.url || '', 'http://x').searchParams).get('tenantId');
+    let q = 'SELECT * FROM change_requests ORDER BY created_at DESC';
+    const params = [];
+    if (tenantId) { params.push(tenantId); q = 'SELECT * FROM change_requests WHERE tenant_id = $1 ORDER BY created_at DESC'; }
+    const r = await pool.query(q, params);
+    return json(res, r.rows.map(x => ({ id: x.id, tenantId: x.tenant_id, tenantName: x.tenant_name, type: x.type, fieldName: x.field_name, oldValue: x.old_value, newValue: x.new_value, requestedBy: x.requested_by, status: x.status, createdAt: x.created_at, resolvedAt: x.resolved_at, resolvedBy: x.resolved_by, notes: x.notes })));
+  }
+  if (req.method === 'POST') {
+    const { tenantId, tenantName, type, fieldName, oldValue, newValue, requestedBy } = body;
+    const r = await pool.query(
+      `INSERT INTO change_requests (tenant_id, tenant_name, type, field_name, old_value, new_value, requested_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [tenantId, tenantName, type, fieldName, oldValue || '', newValue || '', requestedBy || 'landlord']
+    );
+    return json(res, { id: r.rows[0].id, status: 'pending' });
+  }
+  if (req.method === 'PUT') {
+    const { id, status } = body;
+    if (!id || !['accepted', 'rejected'].includes(status)) return json(res, { error: 'Invalid' }, 400);
+    const cr = await pool.query('SELECT * FROM change_requests WHERE id = $1', [id]);
+    const reqRow = cr.rows[0];
+    if (!reqRow || reqRow.status !== 'pending') return json(res, { error: 'Not found or already resolved' }, 404);
+    await pool.query('UPDATE change_requests SET status = $2, resolved_at = NOW(), resolved_by = $3 WHERE id = $1', [id, status, body.resolvedBy || 'tenant']);
+    if (status === 'accepted' && reqRow.field_name === 'rent') {
+      await pool.query('UPDATE tenants SET rent = $2 WHERE id = $1', [reqRow.tenant_id, parseInt(reqRow.new_value, 10)]);
+    }
+    if (status === 'accepted' && ['email', 'phone', 'fname', 'lname'].includes(reqRow.field_name)) {
+      const col = reqRow.field_name === 'fname' ? 'fname' : reqRow.field_name === 'lname' ? 'lname' : reqRow.field_name;
+      await pool.query(`UPDATE tenants SET ${col} = $2 WHERE id = $1`, [reqRow.tenant_id, reqRow.new_value]);
+      if (['fname', 'lname'].includes(reqRow.field_name)) {
+        const t = await pool.query('SELECT fname, lname FROM tenants WHERE id = $1', [reqRow.tenant_id]);
+        const r = t.rows[0];
+        if (r) await pool.query('UPDATE tenants SET name = $2 WHERE id = $1', [reqRow.tenant_id, [r.fname, r.lname].filter(Boolean).join(' ')]);
+      }
+    }
+    return json(res, { ok: true });
+  }
+  res.writeHead(405);
+  res.end();
+}
+
 // API routes
 async function apiTenants(req, res, body) {
   if (req.method === 'GET') {
@@ -112,6 +173,17 @@ async function apiTenants(req, res, body) {
   if (req.method === 'PUT') {
     const { id, fname, lname, phone, email, rent, lease_end, status, pin } = body;
     const name = fname && lname ? `${fname} ${lname}` : body.name;
+    const cur = await pool.query('SELECT * FROM tenants WHERE id = $1', [id]);
+    const t = cur.rows[0];
+    if (!t) return json(res, { error: 'Tenant not found' }, 404);
+    if (rent != null && Number(rent) !== Number(t.rent)) {
+      await pool.query(
+        `INSERT INTO change_requests (tenant_id, tenant_name, type, field_name, old_value, new_value, requested_by) VALUES ($1,$2,'rent_change','rent',$3,$4,'landlord')`,
+        [id, t.name, String(t.rent), String(rent)]
+      );
+      if (t.email) email.sendRentChangeProposal(t, t.rent, rent).catch(() => {});
+      return json(res, { ok: true, pendingRent: true, message: 'Rent change proposed. Tenant must accept.' });
+    }
     await pool.query(
       `UPDATE tenants SET name=COALESCE($2,name), fname=COALESCE($3,fname), lname=COALESCE($4,lname), phone=$5, email=$6, rent=COALESCE($7,rent), lease_end=COALESCE($8,lease_end), status=COALESCE($9,status), pin=COALESCE($10,pin) WHERE id=$1`,
       [id, name, fname, lname, phone, email, rent, lease_end, status, pin]
@@ -270,6 +342,7 @@ async function apiClearData(req, res, body) {
   const expected = process.env.ADMIN_PASSWORD || process.env.LANDLORD_PASSWORD || 'admin123';
   if (body?.password !== expected) return json(res, { ok: false, error: 'Incorrect password' }, 403);
   try {
+    await pool.query('DELETE FROM change_requests');
     await pool.query('DELETE FROM agreement_signatures');
     await pool.query('DELETE FROM payments');
     await pool.query('DELETE FROM tickets');
@@ -321,7 +394,6 @@ async function apiAgreementSignatures(req, res, body) {
 
 async function handleApi(req, res, pathname, body) {
   cors(res);
-  // Auth endpoint — no DB required
   if (pathname === '/api/auth/landlord' && req.method === 'POST') {
     const expected = process.env.ADMIN_PASSWORD || process.env.LANDLORD_PASSWORD || 'admin123';
     const ok = body?.password === expected;
@@ -344,6 +416,8 @@ async function handleApi(req, res, pathname, body) {
     if (pathname === '/api/agreement-signatures') return apiAgreementSignatures(req, res, body);
     if (pathname === '/api/send-email') return apiSendEmail(req, res, body);
     if (pathname === '/api/clear-data' && req.method === 'POST') return apiClearData(req, res, body);
+    if (pathname === '/api/auth/tenant' && req.method === 'POST') return apiAuthTenant(req, res, body);
+    if (pathname === '/api/change-requests') return apiChangeRequests(req, res, body);
     return json(res, { error: 'Not found' }, 404);
   } catch (e) {
     console.error('API error:', e);
