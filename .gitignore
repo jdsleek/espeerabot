@@ -19,3 +19,5 @@ moltbook-credentials.json
 # Logs and local state
 *.log
 node_modules/
+# PropEase — has its own repo (github.com/jdsleek/propease)
+propease/
