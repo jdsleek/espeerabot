@@ -79,6 +79,14 @@
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
   .card-title { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
 
+  /* BUILDINGS */
+  .buildings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .building-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; transition: border-color 0.15s; }
+  .building-card:hover { border-color: var(--gold); }
+  .building-name { font-family: 'Fraunces', serif; font-size: 18px; color: var(--cream); font-weight: 500; margin-bottom: 8px; }
+  .building-units { font-size: 11px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .building-unit-tag { background: var(--surface2); padding: 4px 8px; border-radius: 4px; font-size: 10px; }
+  .building-actions { margin-top: 16px; display: flex; gap: 8px; }
   /* TENANTS */
   .tenant-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
   .tenant-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; cursor: pointer; transition: border-color 0.15s; }
@@ -293,6 +301,7 @@
   <div class="logo"><h1>PropEase</h1><p>Property Management</p></div>
   <nav class="nav">
     <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">⊞</span> Dashboard</div>
+    <div class="nav-item" onclick="showPage('buildings',this)"><span class="nav-icon">🏢</span> Buildings</div>
     <div class="nav-item" onclick="showPage('tenants',this)"><span class="nav-icon">◎</span> Tenants</div>
     <div class="nav-item" onclick="showPage('payments',this)"><span class="nav-icon">◈</span> Payments</div>
     <div class="nav-item" onclick="showPage('agreements',this)"><span class="nav-icon">◻</span> Agreements</div>
@@ -332,6 +341,15 @@
       <div class="table-wrap"><table class="table"><thead><tr><th>Tenant</th><th>Unit</th><th>Amount</th><th>Due Date</th><th>Status</th><th>WhatsApp</th></tr></thead>
       <tbody id="dashPaymentTable"></tbody></table></div>
     </div>
+  </div>
+
+  <!-- BUILDINGS -->
+  <div class="page" id="page-buildings">
+    <div class="page-header">
+      <div><h2>Buildings</h2><p>Manage your properties and units</p></div>
+      <button class="btn" onclick="openModal('addBuildingModal')">+ Add Building</button>
+    </div>
+    <div class="buildings-grid" id="buildingsGrid"></div>
   </div>
 
   <!-- TENANTS -->
@@ -501,6 +519,34 @@
 
 <!-- ═══════════════════════ MODALS ═══════════════════════ -->
 
+<!-- Add Building -->
+<div class="modal-bg" id="addBuildingModal">
+  <div class="modal">
+    <h3>Add Building</h3>
+    <div class="form-group"><label>Building Name</label><input id="newBuildingName" placeholder="Empire Apartments"></div>
+    <div class="form-group"><label>Units (comma-separated)</label><input id="newBuildingUnits" placeholder="A1, A2, A3, A4, B1, B2, B3, B4"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('addBuildingModal')">Cancel</button>
+      <button class="btn" onclick="addBuilding()">Add Building</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Building -->
+<div class="modal-bg" id="editBuildingModal">
+  <div class="modal">
+    <h3>Edit Building</h3>
+    <input type="hidden" id="editBuildingId">
+    <div class="form-group"><label>Building Name</label><input id="editBuildingName" placeholder="Empire Apartments"></div>
+    <div class="form-group"><label>Units (comma-separated)</label><input id="editBuildingUnits" placeholder="A1, A2, A3, A4, B1, B2, B3, B4"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" style="color:var(--red);border-color:var(--red)" onclick="deleteBuilding()">Delete</button>
+      <button class="btn-ghost" onclick="closeModal('editBuildingModal')">Cancel</button>
+      <button class="btn" onclick="saveBuilding()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Add Tenant -->
 <div class="modal-bg" id="addTenantModal">
   <div class="modal">
@@ -514,18 +560,20 @@
       <div class="form-group"><label>Email</label><input id="newEmail" placeholder="amira@email.com"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Unit/Flat</label>
-        <select id="newUnit"><option>Flat 1A</option><option>Flat 1B</option><option>Flat 2A</option><option>Flat 2B</option><option>Flat 2C</option><option>Flat 2D</option></select>
-      </div>
+      <div class="form-group"><label>Building</label><select id="newBuilding" onchange="onNewBuildingChange()"><option value="">— Select building —</option></select></div>
+      <div class="form-group"><label>Unit</label><select id="newUnit"><option value="">— Select building first —</option></select></div>
+    </div>
+    <div class="form-row">
       <div class="form-group"><label>Monthly Rent (₦)</label><input id="newRent" placeholder="150000" type="number"></div>
-    </div>
-    <div class="form-row">
       <div class="form-group"><label>Move-in Date</label><input id="newMoveIn" type="date"></div>
-      <div class="form-group"><label>Lease End Date</label><input id="newLeaseEnd" type="date"></div>
     </div>
     <div class="form-row">
+      <div class="form-group"><label>Lease End Date</label><input id="newLeaseEnd" type="date"></div>
       <div class="form-group"><label>Security Deposit (₦)</label><input id="newDeposit" placeholder="300000" type="number"></div>
+    </div>
+    <div class="form-row">
       <div class="form-group"><label>Tenant Portal PIN</label><input id="newPin" placeholder="Optional 4-digit PIN" maxlength="4" type="text"></div>
+      <div class="form-group"></div>
     </div>
     <div class="form-group"><label>Notes</label><textarea id="newNotes" placeholder="Any special terms or notes..."></textarea></div>
     <div class="modal-actions">
@@ -686,6 +734,10 @@
       <div class="form-group"><label>Last Name</label><input id="editLname"></div>
     </div>
     <div class="form-row">
+      <div class="form-group"><label>Building</label><select id="editBuilding" onchange="onEditBuildingChange()"></select></div>
+      <div class="form-group"><label>Unit</label><select id="editUnit"></select></div>
+    </div>
+    <div class="form-row">
       <div class="form-group"><label>Phone</label><input id="editPhone"></div>
       <div class="form-group"><label>Email</label><input id="editEmail"></div>
     </div>
@@ -726,7 +778,8 @@ async function initData() {
     const h = await fetch('/api/health').then(r => r.json()).catch(() => ({}));
     if (h.db) {
       API_MODE = true;
-      const [t, p, tk, a, r, tmpl, sigs] = await Promise.all([
+      const [b, t, p, tk, a, r, tmpl, sigs] = await Promise.all([
+        fetch('/api/buildings').then(x => x.json()).catch(() => []),
         fetch('/api/tenants').then(x => x.json()),
         fetch('/api/payments').then(x => x.json()),
         fetch('/api/tickets').then(x => x.json()),
@@ -735,6 +788,7 @@ async function initData() {
         fetch('/api/agreement-templates').then(x => x.json()),
         fetch('/api/agreement-signatures').then(x => x.json())
       ]);
+      DB.buildings = (b && Array.isArray(b)) ? b : [];
       DB.tenants = (t && Array.isArray(t)) ? t : [];
       DB.payments = (p && Array.isArray(p)) ? p : [];
       DB.tickets = (tk && Array.isArray(tk)) ? tk : [];
@@ -748,23 +802,23 @@ async function initData() {
 }
 
 const defaultTenants = [
-  { id:1, name:'Amira Hassan', fname:'Amira', lname:'Hassan', unit:'Flat 1A', rent:150000, phone:'+234 802 111 2233', email:'amira.h@gmail.com', since:'Jan 2024', moveIn:'2024-01-01', leaseEnd:'2025-12-31', deposit:300000, status:'pending', color:'#c9a84c', pin:'1234', notes:'' },
-  { id:2, name:'Tunde Bakare', fname:'Tunde', lname:'Bakare', unit:'Flat 1B', rent:200000, phone:'+234 803 222 3344', email:'tunde.b@gmail.com', since:'Feb 2025', moveIn:'2025-02-01', leaseEnd:'2026-01-31', deposit:400000, status:'pending', color:'#5b8ccc', pin:'2345', notes:'' },
-  { id:3, name:'Chika Osei', fname:'Chika', lname:'Osei', unit:'Flat 2A', rent:175000, phone:'+234 804 333 4455', email:'chika.o@gmail.com', since:'Mar 2023', moveIn:'2023-03-01', leaseEnd:'2025-04-12', deposit:350000, status:'paid', color:'#5bab6e', pin:'3456', notes:'' },
-  { id:4, name:'Emeka Nwosu', fname:'Emeka', lname:'Nwosu', unit:'Flat 2B', rent:180000, phone:'+234 805 444 5566', email:'emeka.n@gmail.com', since:'Jun 2023', moveIn:'2023-06-01', leaseEnd:'2026-05-31', deposit:360000, status:'paid', color:'#d97c3a', pin:'4567', notes:'' },
-  { id:5, name:'Fatima Aliyu', fname:'Fatima', lname:'Aliyu', unit:'Flat 2C', rent:145000, phone:'+234 806 555 6677', email:'fatima.a@gmail.com', since:'Sep 2023', moveIn:'2023-09-01', leaseEnd:'2025-08-31', deposit:290000, status:'paid', color:'#9b6bb5', pin:'5678', notes:'' },
+  { id:1, name:'Amira Hassan', fname:'Amira', lname:'Hassan', unit:'A1', buildingId:1, rent:150000, phone:'+234 802 111 2233', email:'amira.h@gmail.com', since:'Jan 2024', moveIn:'2024-01-01', leaseEnd:'2025-12-31', deposit:300000, status:'pending', color:'#c9a84c', pin:'1234', notes:'' },
+  { id:2, name:'Tunde Bakare', fname:'Tunde', lname:'Bakare', unit:'A2', buildingId:1, rent:200000, phone:'+234 803 222 3344', email:'tunde.b@gmail.com', since:'Feb 2025', moveIn:'2025-02-01', leaseEnd:'2026-01-31', deposit:400000, status:'pending', color:'#5b8ccc', pin:'2345', notes:'' },
+  { id:3, name:'Chika Osei', fname:'Chika', lname:'Osei', unit:'A3', buildingId:1, rent:175000, phone:'+234 804 333 4455', email:'chika.o@gmail.com', since:'Mar 2023', moveIn:'2023-03-01', leaseEnd:'2025-04-12', deposit:350000, status:'paid', color:'#5bab6e', pin:'3456', notes:'' },
+  { id:4, name:'Emeka Nwosu', fname:'Emeka', lname:'Nwosu', unit:'A4', buildingId:1, rent:180000, phone:'+234 805 444 5566', email:'emeka.n@gmail.com', since:'Jun 2023', moveIn:'2023-06-01', leaseEnd:'2026-05-31', deposit:360000, status:'paid', color:'#d97c3a', pin:'4567', notes:'' },
+  { id:5, name:'Fatima Aliyu', fname:'Fatima', lname:'Aliyu', unit:'B1', buildingId:1, rent:145000, phone:'+234 806 555 6677', email:'fatima.a@gmail.com', since:'Sep 2023', moveIn:'2023-09-01', leaseEnd:'2025-08-31', deposit:290000, status:'paid', color:'#9b6bb5', pin:'5678', notes:'' },
 ];
 const defaultPayments = [
-  { id:'p1', date:'2025-02-26', tenant:'Chika Osei', unit:'Flat 2A', amount:175000, method:'Bank Transfer', period:'February 2025', ref:'TXN001', status:'paid' },
-  { id:'p2', date:'2025-02-25', tenant:'Emeka Nwosu', unit:'Flat 2B', amount:180000, method:'Bank Transfer', period:'February 2025', ref:'TXN002', status:'paid' },
-  { id:'p3', date:'2025-02-25', tenant:'Fatima Aliyu', unit:'Flat 2C', amount:145000, method:'Cash', period:'February 2025', ref:'CASH001', status:'paid' },
-  { id:'p4', date:'2025-01-31', tenant:'Amira Hassan', unit:'Flat 1A', amount:150000, method:'Bank Transfer', period:'January 2025', ref:'TXN003', status:'paid' },
-  { id:'p5', date:'2025-01-31', tenant:'Tunde Bakare', unit:'Flat 1B', amount:200000, method:'Mobile Money', period:'January 2025', ref:'MM001', status:'paid' },
+  { id:'p1', date:'2025-02-26', tenant:'Chika Osei', unit:'A3', amount:175000, method:'Bank Transfer', period:'February 2025', ref:'TXN001', status:'paid' },
+  { id:'p2', date:'2025-02-25', tenant:'Emeka Nwosu', unit:'A4', amount:180000, method:'Bank Transfer', period:'February 2025', ref:'TXN002', status:'paid' },
+  { id:'p3', date:'2025-02-25', tenant:'Fatima Aliyu', unit:'B1', amount:145000, method:'Cash', period:'February 2025', ref:'CASH001', status:'paid' },
+  { id:'p4', date:'2025-01-31', tenant:'Amira Hassan', unit:'A1', amount:150000, method:'Bank Transfer', period:'January 2025', ref:'TXN003', status:'paid' },
+  { id:'p5', date:'2025-01-31', tenant:'Tunde Bakare', unit:'A2', amount:200000, method:'Mobile Money', period:'January 2025', ref:'MM001', status:'paid' },
 ];
 const defaultTickets = [
-  { id:'T001', tenant:'Fatima Aliyu', unit:'Flat 2C', category:'Plumbing', title:'Leaking tap in kitchen', desc:'The kitchen tap has been dripping constantly for 3 days.', priority:'High', status:'open', date:'2025-02-24' },
-  { id:'T002', tenant:'Amira Hassan', unit:'Flat 1A', category:'Electrical', title:'Flickering lights in bedroom', desc:'The bedroom light flickers intermittently.', priority:'Medium', status:'in-progress', date:'2025-02-10' },
-  { id:'T003', tenant:'Chika Osei', unit:'Flat 2A', category:'Structural', title:'Window latch broken', desc:'The window latch on the main window is broken.', priority:'Low', status:'resolved', date:'2025-01-20' },
+  { id:'T001', tenant:'Fatima Aliyu', unit:'B1', category:'Plumbing', title:'Leaking tap in kitchen', desc:'The kitchen tap has been dripping constantly for 3 days.', priority:'High', status:'open', date:'2025-02-24' },
+  { id:'T002', tenant:'Amira Hassan', unit:'A1', category:'Electrical', title:'Flickering lights in bedroom', desc:'The bedroom light flickers intermittently.', priority:'Medium', status:'in-progress', date:'2025-02-10' },
+  { id:'T003', tenant:'Chika Osei', unit:'A3', category:'Structural', title:'Window latch broken', desc:'The window latch on the main window is broken.', priority:'Low', status:'resolved', date:'2025-01-20' },
 ];
 const defaultActivity = [
   { type:'payment', text:'Chika Osei paid ₦175,000', time:'Today, 9:14 AM', color:'var(--green)' },
@@ -773,7 +827,12 @@ const defaultActivity = [
   { type:'onboard', text:'New tenant onboarded: Tunde Bakare', time:'1 week ago', color:'var(--blue)' },
 ];
 
+const defaultBuildings = [
+  { id: 1, name: 'Empire Apartments', units: ['A1','A2','A3','A4','B1','B2','B3','B4'] },
+  { id: 2, name: '23 Complex', units: ['Store 1','Store 2','Store 3','Store 4','Store 5','Store 6','Store 7','Store 8','Store 9','Store 10'] }
+];
 let DB = {
+  buildings: loadData('buildings', defaultBuildings),
   tenants: loadData('tenants', defaultTenants),
   payments: loadData('payments', defaultPayments),
   tickets: loadData('tickets', defaultTickets),
@@ -785,6 +844,7 @@ let DB = {
 
 function save() {
   if (API_MODE) return;
+  saveData('buildings', DB.buildings);
   saveData('tenants', DB.tenants);
   saveData('payments', DB.payments);
   saveData('tickets', DB.tickets);
@@ -890,6 +950,37 @@ function populateSelects() {
     const el = document.getElementById(id);
     if (el) el.innerHTML = names;
   });
+  const buildings = DB.buildings || [];
+  const buildSel = document.getElementById('newBuilding');
+  if (buildSel) {
+    buildSel.innerHTML = '<option value="">— Select building —</option>' + buildings.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+    onNewBuildingChange();
+  }
+  const editBuildSel = document.getElementById('editBuilding');
+  if (editBuildSel) {
+    editBuildSel.innerHTML = '<option value="">— None —</option>' + buildings.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+    onEditBuildingChange();
+  }
+}
+function onNewBuildingChange() {
+  const sel = document.getElementById('newBuilding');
+  const unitSel = document.getElementById('newUnit');
+  if (!sel || !unitSel) return;
+  const bid = sel.value ? parseInt(sel.value, 10) : null;
+  const b = (DB.buildings || []).find(x => x.id === bid);
+  const units = b && Array.isArray(b.units) ? b.units : [];
+  unitSel.innerHTML = units.length ? units.map(u => `<option value="${u}">${u}</option>`).join('') : '<option value="">— Select building first —</option>';
+}
+function onEditBuildingChange() {
+  const sel = document.getElementById('editBuilding');
+  const unitSel = document.getElementById('editUnit');
+  if (!sel || !unitSel) return;
+  const bid = sel.value ? parseInt(sel.value, 10) : null;
+  const b = (DB.buildings || []).find(x => x.id === bid);
+  const units = b && Array.isArray(b.units) ? b.units : [];
+  const cur = unitSel.value;
+  unitSel.innerHTML = units.length ? units.map(u => `<option value="${u}"${u===cur?' selected':''}>${u}</option>`).join('') : '<option value="">— Select building —</option>';
+}
   const remEl = document.getElementById('remTenant');
   if (remEl) remEl.innerHTML = '<option value="all">All Tenants</option>' + names;
   const bulkEl = document.getElementById('bulkTarget');
@@ -905,7 +996,7 @@ async function clearAllData() {
     const data = await res.json();
     if (data.ok) {
       await initData();
-      renderTenants(DB.tenants); renderDashboard(); renderPayments(); renderAgreements(); renderTickets('all'); renderReminders();
+      renderBuildings(); renderTenants(DB.tenants); renderDashboard(); renderPayments(); renderAgreements(); renderTickets('all'); renderReminders();
       showToast('All data cleared. Add your real tenants now.', 'green');
     } else showToast(data.error || 'Failed', 'red');
   } catch (e) { showToast('Failed', 'red'); }
@@ -934,6 +1025,7 @@ function showPage(id, el) {
   document.getElementById('page-' + id).classList.add('active');
   if (el) el.classList.add('active');
   if (window.innerWidth <= 992) { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('open'); document.body.style.overflow = ''; }
+  if (id === 'buildings') renderBuildings();
   if (id === 'tenants') renderTenants(DB.tenants);
   if (id === 'payments') renderPayments();
   if (id === 'agreements') renderAgreements();
@@ -950,6 +1042,7 @@ function initLandlord() {
   document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-NG',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   updateSidebar();
   renderDashboard();
+  renderBuildings();
   renderTenants(DB.tenants);
   renderPayments();
   renderAgreements();
@@ -958,9 +1051,13 @@ function initLandlord() {
 }
 
 function updateSidebar() {
+  const buildings = DB.buildings || [];
+  const totalUnits = buildings.reduce((s, b) => s + (b.units || []).length, 0) || 6;
   const occ = DB.tenants.length;
-  document.getElementById('sbOccFill').style.width = (occ / 6 * 100) + '%';
-  document.getElementById('sbOccText').textContent = occ + '/6 occupied';
+  document.getElementById('sbPropName').textContent = buildings.length ? buildings.map(b => b.name).join(', ') : 'Your Property';
+  document.getElementById('sbPropMeta').textContent = buildings.length + ' building' + (buildings.length !== 1 ? 's' : '') + ' · ' + totalUnits + ' units total';
+  document.getElementById('sbOccFill').style.width = totalUnits ? (occ / totalUnits * 100) + '%' : '0%';
+  document.getElementById('sbOccText').textContent = occ + '/' + totalUnits + ' occupied';
   // reminder badge
   const due = DB.tenants.filter(t => t.status === 'pending').length;
   document.getElementById('reminderBadge').textContent = due;
@@ -1015,6 +1112,96 @@ function renderDashboard() {
 }
 
 // ═══════════════════════════════════════════
+//  BUILDINGS
+// ═══════════════════════════════════════════
+function renderBuildings() {
+  const buildings = DB.buildings || [];
+  document.getElementById('buildingsGrid').innerHTML = buildings.length === 0
+    ? '<div class="empty-state" style="grid-column:1/-1"><span class="emoji">🏢</span>No buildings yet. Add one to get started!</div>'
+    : buildings.map(b => `
+      <div class="building-card">
+        <div class="building-name">${b.name}</div>
+        <div style="font-size:11px;color:var(--muted)">${(b.units || []).length} units</div>
+        <div class="building-units">${(b.units || []).map(u => `<span class="building-unit-tag">${u}</span>`).join('')}</div>
+        <div class="building-actions">
+          <button class="btn-ghost" onclick="openEditBuilding(${b.id})">Edit</button>
+        </div>
+      </div>`).join('');
+}
+
+async function addBuilding() {
+  const name = document.getElementById('newBuildingName').value.trim();
+  const unitsStr = document.getElementById('newBuildingUnits').value.trim();
+  if (!name) { showToast('Enter building name', 'red'); return; }
+  const units = unitsStr ? unitsStr.split(/[,\s]+/).map(u => u.trim()).filter(Boolean) : [];
+  if (API_MODE) {
+    try {
+      const res = await fetch('/api/buildings', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name, units }) });
+      const created = await res.json();
+      DB.buildings.push(created);
+    } catch (e) { showToast('Failed to add building', 'red'); return; }
+  } else {
+    const id = Math.max(0, ...(DB.buildings || []).map(x => x.id)) + 1;
+    DB.buildings.push({ id, name, units }); save();
+  }
+  closeModal('addBuildingModal');
+  document.getElementById('newBuildingName').value = ''; document.getElementById('newBuildingUnits').value = '';
+  renderBuildings(); updateSidebar();
+  showToast(name + ' added', 'green');
+}
+
+let editBuildingId = null;
+function openEditBuilding(id) {
+  const b = (DB.buildings || []).find(x => x.id === id);
+  if (!b) return;
+  editBuildingId = id;
+  document.getElementById('editBuildingId').value = id;
+  document.getElementById('editBuildingName').value = b.name;
+  document.getElementById('editBuildingUnits').value = (b.units || []).join(', ');
+  openModal('editBuildingModal');
+}
+
+async function saveBuilding() {
+  const id = parseInt(document.getElementById('editBuildingId').value, 10);
+  const name = document.getElementById('editBuildingName').value.trim();
+  const unitsStr = document.getElementById('editBuildingUnits').value.trim();
+  if (!name) { showToast('Enter building name', 'red'); return; }
+  const units = unitsStr ? unitsStr.split(/[,\s]+/).map(u => u.trim()).filter(Boolean) : [];
+  if (API_MODE) {
+    try {
+      await fetch('/api/buildings', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ id, name, units }) });
+      const b = DB.buildings.find(x => x.id === id);
+      if (b) { b.name = name; b.units = units; }
+    } catch (e) { showToast('Failed to save', 'red'); return; }
+  } else {
+    const b = DB.buildings.find(x => x.id === id);
+    if (b) { b.name = name; b.units = units; save(); }
+  }
+  closeModal('editBuildingModal');
+  renderBuildings(); updateSidebar();
+  showToast('Building updated', 'green');
+}
+
+async function deleteBuilding() {
+  if (!confirm('Delete this building? Tenants in it will be unassigned.')) return;
+  const id = parseInt(document.getElementById('editBuildingId').value, 10);
+  if (API_MODE) {
+    try {
+      await fetch('/api/buildings', { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ id }) });
+      DB.buildings = DB.buildings.filter(x => x.id !== id);
+      DB.tenants.forEach(t => { if (t.buildingId === id) t.buildingId = null; });
+    } catch (e) { showToast('Failed to delete', 'red'); return; }
+  } else {
+    DB.buildings = DB.buildings.filter(x => x.id !== id);
+    DB.tenants.forEach(t => { if (t.buildingId === id) t.buildingId = null; });
+    save();
+  }
+  closeModal('editBuildingModal');
+  renderBuildings(); renderTenants(DB.tenants); updateSidebar();
+  showToast('Building deleted', 'green');
+}
+
+// ═══════════════════════════════════════════
 //  TENANTS
 // ═══════════════════════════════════════════
 function renderTenants(list) {
@@ -1025,7 +1212,7 @@ function renderTenants(list) {
       <div class="tenant-card" onclick="showTenantDetail(${t.id})">
         <div class="tenant-avatar" style="background:${t.color}22;color:${t.color}">${getInitials(t.name)}</div>
         <div class="tenant-name">${t.name}</div>
-        <div class="tenant-unit">${t.unit} · Since ${t.since}</div>
+        <div class="tenant-unit">${t.unit}${(t.buildingName || (DB.buildings||[]).find(b=>b.id===t.buildingId)?.name) ? ' · ' + (t.buildingName || (DB.buildings||[]).find(b=>b.id===t.buildingId)?.name) : ''} · Since ${t.since}</div>
         <div class="tenant-rent">${fmt(t.rent)}/mo</div>
         <span class="tenant-status status-${t.status}">${t.status.toUpperCase()}</span>
         <div style="font-size:10px;color:var(--muted);margin-top:8px">Lease ends ${fmtDate(t.leaseEnd)}</div>
@@ -1040,10 +1227,14 @@ async function addTenant() {
   const fname = document.getElementById('newFname').value.trim();
   const lname = document.getElementById('newLname').value.trim();
   if (!fname || !lname) { showToast('Please enter tenant name', 'red'); return; }
+  const unit = document.getElementById('newUnit').value;
+  const buildingId = document.getElementById('newBuilding').value ? parseInt(document.getElementById('newBuilding').value, 10) : null;
+  if (!unit) { showToast('Please select a building and unit', 'red'); return; }
   const name = fname + ' ' + lname;
   const newT = {
     name, fname, lname,
-    unit: document.getElementById('newUnit').value,
+    unit,
+    buildingId: buildingId || undefined,
     rent: parseInt(document.getElementById('newRent').value) || 0,
     phone: document.getElementById('newPhone').value,
     email: document.getElementById('newEmail').value,
@@ -1064,7 +1255,7 @@ async function addTenant() {
       DB.tenants.push(created);
     } catch (e) { showToast('Failed to add tenant', 'red'); return; }
   } else {
-    newT.id = Date.now(); DB.tenants.push(newT); save();
+    newT.id = Date.now(); newT.buildingId = buildingId; DB.tenants.push(newT); save();
   }
   closeModal('addTenantModal');
   renderTenants(DB.tenants);
@@ -1085,7 +1276,7 @@ function showTenantDetail(id) {
       <div class="tenant-detail-avatar" style="background:${t.color}22;color:${t.color}">${getInitials(t.name)}</div>
       <div style="flex:1">
         <div style="font-family:'Fraunces',serif;font-size:22px;color:var(--cream)">${t.name}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px">${t.unit} · Tenant since ${t.since}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">${t.unit}${(t.buildingName || (DB.buildings||[]).find(b=>b.id===t.buildingId)?.name) ? ' · ' + (t.buildingName || (DB.buildings||[]).find(b=>b.id===t.buildingId)?.name) : ''} · Tenant since ${t.since}</div>
         <span class="tenant-status status-${t.status}" style="margin-top:6px;display:inline-block">${t.status.toUpperCase()}</span>
       </div>
       <div style="text-align:right">
@@ -1136,9 +1327,14 @@ function editTenantFromDetail() {
   document.getElementById('editPhone').value = t.phone;
   document.getElementById('editEmail').value = t.email;
   document.getElementById('editRent').value = t.rent;
-  document.getElementById('editLeaseEnd').value = t.leaseEnd;
-  document.getElementById('editStatus').value = t.status;
-  document.getElementById('editPin').value = t.pin;
+  document.getElementById('editLeaseEnd').value = t.leaseEnd || t.lease_end || '';
+  document.getElementById('editStatus').value = t.status || 'pending';
+  document.getElementById('editPin').value = t.pin || '';
+  const editBuild = document.getElementById('editBuilding');
+  const editUnit = document.getElementById('editUnit');
+  if (editBuild) editBuild.value = t.buildingId || '';
+  onEditBuildingChange();
+  if (editUnit) editUnit.value = t.unit || '';
   openModal('editTenantModal');
 }
 
@@ -1148,13 +1344,17 @@ async function saveEditTenant() {
   if (!t) return;
   const fname = document.getElementById('editFname').value.trim();
   const lname = document.getElementById('editLname').value.trim();
+  const buildingId = document.getElementById('editBuilding').value ? parseInt(document.getElementById('editBuilding').value, 10) : null;
+  const unit = document.getElementById('editUnit').value || t.unit;
   const patch = { id, fname, lname, name: fname + ' ' + lname,
     phone: document.getElementById('editPhone').value,
     email: document.getElementById('editEmail').value,
     rent: parseInt(document.getElementById('editRent').value) || t.rent,
     leaseEnd: document.getElementById('editLeaseEnd').value,
     status: document.getElementById('editStatus').value,
-    pin: document.getElementById('editPin').value || t.pin };
+    pin: document.getElementById('editPin').value || t.pin,
+    buildingId: buildingId || undefined,
+    unit };
   if (API_MODE) {
     try {
       const res = await fetch('/api/tenants', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(patch) });
@@ -1168,7 +1368,7 @@ async function saveEditTenant() {
       }
     } catch (e) { showToast('Failed to update', 'red'); return; }
   }
-  t.fname = fname; t.lname = lname; t.name = patch.name; t.phone = patch.phone; t.email = patch.email; t.rent = patch.rent; t.leaseEnd = patch.leaseEnd; t.status = patch.status; t.pin = patch.pin;
+  t.fname = fname; t.lname = lname; t.name = patch.name; t.phone = patch.phone; t.email = patch.email; t.rent = patch.rent; t.leaseEnd = patch.leaseEnd; t.status = patch.status; t.pin = patch.pin; t.buildingId = patch.buildingId; t.unit = patch.unit;
   if (!API_MODE) save();
   closeModal('editTenantModal');
   renderTenants(DB.tenants); renderDashboard(); renderPayments(); renderAgreements();

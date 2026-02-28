@@ -74,7 +74,35 @@ function cors(res) {
 }
 
 function mapTenantRow(row) {
-  return { id: row.id, name: row.name, fname: row.fname, lname: row.lname, unit: row.unit, rent: row.rent, phone: row.phone, email: row.email, since: row.since, moveIn: row.move_in, leaseEnd: row.lease_end, deposit: row.deposit, status: row.status, color: row.color, pin: row.pin, notes: row.notes || '' };
+  return { id: row.id, name: row.name, fname: row.fname, lname: row.lname, unit: row.unit, rent: row.rent, phone: row.phone, email: row.email, since: row.since, moveIn: row.move_in, leaseEnd: row.lease_end, deposit: row.deposit, status: row.status, color: row.color, pin: row.pin, notes: row.notes || '', buildingId: row.building_id };
+}
+
+async function apiBuildings(req, res, body) {
+  if (req.method === 'GET') {
+    const r = await pool.query('SELECT * FROM buildings ORDER BY id');
+    return json(res, r.rows.map(b => ({ id: b.id, name: b.name, units: Array.isArray(b.units) ? b.units : (b.units ? JSON.parse(b.units) : []) })));
+  }
+  if (req.method === 'POST') {
+    const { name, units } = body;
+    const unitsArr = Array.isArray(units) ? units : (typeof units === 'string' ? units.split(/[,\s]+/).map(u => u.trim()).filter(Boolean) : []);
+    const r = await pool.query('INSERT INTO buildings (name, units) VALUES ($1, $2) RETURNING *', [name || '', JSON.stringify(unitsArr)]);
+    const b = r.rows[0];
+    return json(res, { id: b.id, name: b.name, units: unitsArr });
+  }
+  if (req.method === 'PUT') {
+    const { id, name, units } = body;
+    const unitsArr = units != null ? (Array.isArray(units) ? units : (typeof units === 'string' ? units.split(/[,\s]+/).map(u => u.trim()).filter(Boolean) : [])) : null;
+    if (name != null) await pool.query('UPDATE buildings SET name = $2 WHERE id = $1', [id, name]);
+    if (unitsArr != null) await pool.query('UPDATE buildings SET units = $2 WHERE id = $1', [id, JSON.stringify(unitsArr)]);
+    return json(res, { ok: true });
+  }
+  if (req.method === 'DELETE') {
+    await pool.query('UPDATE tenants SET building_id = NULL WHERE building_id = $1', [body.id]);
+    await pool.query('DELETE FROM buildings WHERE id = $1', [body.id]);
+    return json(res, { ok: true });
+  }
+  res.writeHead(405);
+  res.end();
 }
 
 function normPhone(s) {
@@ -145,7 +173,7 @@ async function apiChangeRequests(req, res, body) {
 // API routes
 async function apiTenants(req, res, body) {
   if (req.method === 'GET') {
-    const r = await pool.query('SELECT * FROM tenants ORDER BY id');
+    const r = await pool.query('SELECT t.*, b.name as building_name FROM tenants t LEFT JOIN buildings b ON t.building_id = b.id ORDER BY t.building_id, t.unit');
     const rows = r.rows.map(row => ({
       id: row.id,
       name: row.name,
@@ -163,23 +191,25 @@ async function apiTenants(req, res, body) {
       color: row.color,
       pin: row.pin,
       notes: row.notes || '',
+      buildingId: row.building_id,
+      buildingName: row.building_name,
     }));
     return json(res, rows);
   }
   if (req.method === 'POST') {
     const move_in = body.move_in ?? body.moveIn;
     const lease_end = body.lease_end ?? body.leaseEnd;
-    const { name, fname, lname, unit, rent, phone, email, since, deposit, status, color, pin, notes } = body;
+    const { name, fname, lname, unit, rent, phone, email, since, deposit, status, color, pin, notes, buildingId } = body;
     const r = await pool.query(
-      `INSERT INTO tenants (name, fname, lname, unit, rent, phone, email, since, move_in, lease_end, deposit, status, color, pin, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
-      [name || '', fname || '', lname || '', unit || '', rent || 0, phone || '', email || '', since || '', move_in || null, lease_end || null, deposit || 0, status || 'pending', color || '#c9a84c', pin || '1234', notes || '']
+      `INSERT INTO tenants (name, fname, lname, unit, rent, phone, email, since, move_in, lease_end, deposit, status, color, pin, notes, building_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
+      [name || '', fname || '', lname || '', unit || '', rent || 0, phone || '', email || '', since || '', move_in || null, lease_end || null, deposit || 0, status || 'pending', color || '#c9a84c', pin || '1234', notes || '', buildingId || null]
     );
     const row = r.rows[0];
-    return json(res, { id: row.id, name: row.name, fname: row.fname, lname: row.lname, unit: row.unit, rent: row.rent, phone: row.phone, email: row.email, since: row.since, moveIn: row.move_in, leaseEnd: row.lease_end, deposit: row.deposit, status: row.status, color: row.color, pin: row.pin, notes: row.notes || '' });
+    return json(res, { id: row.id, name: row.name, fname: row.fname, lname: row.lname, unit: row.unit, rent: row.rent, phone: row.phone, email: row.email, since: row.since, moveIn: row.move_in, leaseEnd: row.lease_end, deposit: row.deposit, status: row.status, color: row.color, pin: row.pin, notes: row.notes || '', buildingId: row.building_id });
   }
   if (req.method === 'PUT') {
-    const { id, fname, lname, phone, email, rent, lease_end, status, pin } = body;
+    const { id, fname, lname, phone, email, rent, lease_end, status, pin, buildingId, unit } = body;
     const name = fname && lname ? `${fname} ${lname}` : body.name;
     const cur = await pool.query('SELECT * FROM tenants WHERE id = $1', [id]);
     const t = cur.rows[0];
@@ -193,8 +223,8 @@ async function apiTenants(req, res, body) {
       return json(res, { ok: true, pendingRent: true, message: 'Rent change proposed. Tenant must accept.' });
     }
     await pool.query(
-      `UPDATE tenants SET name=COALESCE($2,name), fname=COALESCE($3,fname), lname=COALESCE($4,lname), phone=$5, email=$6, rent=COALESCE($7,rent), lease_end=COALESCE($8,lease_end), status=COALESCE($9,status), pin=COALESCE($10,pin) WHERE id=$1`,
-      [id, name, fname, lname, phone, email, rent, lease_end, status, pin]
+      `UPDATE tenants SET name=COALESCE($2,name), fname=COALESCE($3,fname), lname=COALESCE($4,lname), phone=$5, email=$6, rent=COALESCE($7,rent), lease_end=COALESCE($8,lease_end), status=COALESCE($9,status), pin=COALESCE($10,pin), building_id=COALESCE($11,building_id), unit=COALESCE($12,unit) WHERE id=$1`,
+      [id, name, fname, lname, phone, email, rent, lease_end, status, pin, buildingId, unit]
     );
     return json(res, { ok: true });
   }
@@ -415,6 +445,7 @@ async function handleApi(req, res, pathname, body) {
       const r = await pool.query('SELECT 1');
       return json(res, { ok: true, db: !!r });
     }
+    if (pathname === '/api/buildings') return apiBuildings(req, res, body);
     if (pathname === '/api/tenants') return apiTenants(req, res, body);
     if (pathname === '/api/payments') return apiPayments(req, res, body);
     if (pathname === '/api/tickets') return apiTickets(req, res, body);
