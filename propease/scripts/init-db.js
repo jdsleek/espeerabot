@@ -118,6 +118,23 @@ async function init() {
       DO $$ BEGIN ALTER TABLE tickets ADD COLUMN updated_by TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
       DO $$ BEGIN ALTER TABLE tickets ADD COLUMN updated_at TIMESTAMPTZ; EXCEPTION WHEN duplicate_column THEN NULL; END $$;
     `).catch(() => {});
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS change_requests (
+        id SERIAL PRIMARY KEY,
+        tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+        tenant_name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        field_name TEXT NOT NULL,
+        old_value TEXT,
+        new_value TEXT,
+        requested_by TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        resolved_at TIMESTAMPTZ,
+        resolved_by TEXT,
+        notes TEXT
+      )
+    `).catch((e) => console.warn('change_requests migration:', e.message));
     const r = await pool.query('SELECT COUNT(*) FROM tenants');
     if (Number(r.rows[0].count) === 0) {
       await pool.query(`

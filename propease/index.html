@@ -275,7 +275,10 @@
       <input class="login-input" type="password" id="landlordPass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div id="tenantLoginForm" style="display:none">
-      <input class="login-input" type="tel" id="tenantPhoneInput" placeholder="Your phone number (e.g. 0802 111 2233)" onkeydown="if(event.key==='Enter')doLogin()">
+      <input class="login-input" type="tel" id="tenantPhoneInput" placeholder="Phone (e.g. 0802 111 2233)" onkeydown="if(event.key==='Enter')doLogin()">
+      <p class="login-hint" style="margin:8px 0 4px;font-size:10px;color:var(--muted)">or use name + PIN</p>
+      <input class="login-input" type="text" id="tenantNameInput" placeholder="Full name" style="margin-bottom:8px" onkeydown="if(event.key==='Enter')doLogin()">
+      <input class="login-input" type="password" id="tenantPin" placeholder="PIN" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div class="login-error" id="loginError">Incorrect credentials. Try again.</div>
     <button class="login-btn" onclick="doLogin()" style="margin-top:4px">Sign In →</button>
@@ -835,9 +838,12 @@ async function doLogin() {
       initLandlord();
     } else { err.style.display = 'block'; }
   } else {
-    const phone = document.getElementById('tenantPhoneInput').value.trim();
-    if (!phone) { err.style.display = 'block'; err.textContent = 'Enter your phone number'; return; }
-    const res = await fetch('/api/auth/tenant', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone }) });
+    const phone = (document.getElementById('tenantPhoneInput') || {}).value.trim();
+    const name = (document.getElementById('tenantNameInput') || {}).value.trim();
+    const pin = (document.getElementById('tenantPin') || {}).value.trim();
+    const payload = phone ? { phone } : (name && pin ? { name, pin } : null);
+    if (!payload) { err.style.display = 'block'; err.textContent = 'Enter phone, or name + PIN'; return; }
+    const res = await fetch('/api/auth/tenant', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const data = await res.json();
     if (data.ok && data.tenant) {
       const t = data.tenant;
@@ -846,7 +852,7 @@ async function doLogin() {
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('tenantView').style.display = 'block';
       renderTenantPortal(t);
-    } else { err.style.display = 'block'; err.textContent = data.error || 'Phone not found'; }
+    } else { err.style.display = 'block'; err.textContent = data.error || 'Invalid credentials'; }
   }
 }
 
@@ -857,8 +863,7 @@ function doLogout() {
   document.getElementById('tenantView').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('landlordPass').value = '';
-  const ph = document.getElementById('tenantPhoneInput');
-  if (ph) ph.value = '';
+  ['tenantPhoneInput','tenantNameInput','tenantPin'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
 }
 
 // ═══════════════════════════════════════════
@@ -1888,6 +1893,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('tenantView').style.display = 'block';
         renderTenantPortal(t);
+      } else {
+        try { localStorage.removeItem('propease_tenant_id'); } catch (e) {}
       }
     }
   } catch (e) {}

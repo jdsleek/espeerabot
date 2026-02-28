@@ -84,7 +84,15 @@ function normPhone(s) {
 
 async function apiAuthTenant(req, res, body) {
   if (req.method !== 'POST') { res.writeHead(405); res.end(); return; }
+  const name = (body?.name || body?.tenantName || '').trim();
+  const pin = (body?.pin || '').trim();
   const phone = normPhone(body?.phone);
+  if (name && pin) {
+    const r = await pool.query(`SELECT * FROM tenants WHERE LOWER(TRIM(name)) = LOWER($1) AND (pin = $2 OR (pin IS NULL AND $2 = ''))`, [name, pin]);
+    const t = r.rows[0];
+    if (!t) return json(res, { ok: false, error: 'Name or PIN not found' }, 404);
+    return json(res, { ok: true, tenant: mapTenantRow(t) });
+  }
   if (!phone || phone.length < 10) return json(res, { ok: false, error: 'Enter a valid phone number' }, 400);
   const r = await pool.query(`SELECT * FROM tenants WHERE RIGHT(REGEXP_REPLACE(COALESCE(phone,''), '[^0-9]', '', 'g'), 10) = $1`, [phone]);
   const t = r.rows[0];
