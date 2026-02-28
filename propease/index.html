@@ -275,10 +275,7 @@
       <input class="login-input" type="password" id="landlordPass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div id="tenantLoginForm" style="display:none">
-      <input class="login-input" type="tel" id="tenantPhoneInput" placeholder="Phone (e.g. 0802 111 2233)" onkeydown="if(event.key==='Enter')doLogin()">
-      <p class="login-hint" style="margin:8px 0 4px;font-size:10px;color:var(--muted)">or use name + PIN</p>
-      <input class="login-input" type="text" id="tenantNameInput" placeholder="Full name" style="margin-bottom:8px" onkeydown="if(event.key==='Enter')doLogin()">
-      <input class="login-input" type="password" id="tenantPin" placeholder="PIN" onkeydown="if(event.key==='Enter')doLogin()">
+      <input class="login-input" type="tel" id="tenantPhoneInput" placeholder="Your phone number (e.g. 0802 111 2233)" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div class="login-error" id="loginError">Incorrect credentials. Try again.</div>
     <button class="login-btn" onclick="doLogin()" style="margin-top:4px">Sign In →</button>
