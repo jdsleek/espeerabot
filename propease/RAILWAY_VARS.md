@@ -7,7 +7,7 @@ Add these in **Railway → Propease service → Variables**:
 - `ADMIN_PASSWORD` — Landlord login password (set via Railway Variables or run `node scripts/railway-set-vars.js` to auto-set).
 
 ## Database
-- `DATABASE_URL` — auto-injected when Postgres is linked
+- `DATABASE_URL` — **Required.** Add Postgres in Railway, then add variable reference: `${{Postgres.DATABASE_URL}}`. See RAILWAY_SETUP.md.
 
 ## Brevo Email
 | Variable | Value |
